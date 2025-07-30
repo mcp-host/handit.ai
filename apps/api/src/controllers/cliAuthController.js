@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import db from '../../models/index.js';
+import { generateAIResponse } from '../services/aiService.js';
 const { CLIAuthCode, User, Company } = db;
 
 // Generate a new CLI authentication code
@@ -244,6 +245,62 @@ export const cleanupExpiredCodes = async (req, res) => {
     console.error('Error cleaning up expired codes:', error);
     res.status(500).json({ 
       error: 'Failed to cleanup expired codes' 
+    });
+  }
+}; 
+
+/**
+ * Execute LLM call using system environment variables
+ */
+export const executeLLM = async (req, res) => {
+  try {
+    const { messages, model, responseFormat, temperature } = req.body;
+
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ 
+        error: 'messages array is required' 
+      });
+    }
+
+    if (!model) {
+      return res.status(400).json({ 
+        error: 'model is required' 
+      });
+    }
+
+    // Use system environment variables for authentication
+    let token;
+    let tokenData = null;
+
+    
+    token = process.env.OPENAI_API_KEY;
+       
+
+    if (!token && !tokenData) {
+      return res.status(500).json({ 
+        error: `No API key found for provider: OpenAI` 
+      });
+    }
+
+    // Execute the LLM call
+    const result = await generateAIResponse({
+      messages,
+      model,
+      provider: 'OpenAI',
+      token,
+      tokenData,
+      responseFormat,
+      temperature
+    });
+
+    res.status(200).json({
+      success: true,
+      result,
+    });
+  } catch (error) {
+    console.error('Error executing LLM:', error);
+    res.status(500).json({ 
+      error: error.message || 'Failed to execute LLM call' 
     });
   }
 }; 

@@ -85,15 +85,26 @@ const DEFAULT_MODEL = "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8";
 /**
  * Generate response using OpenAI
  */
-const generateOpenAIResponse = async ({ messages, responseFormat, token, model }) => {
+const generateOpenAIResponse = async ({ messages, responseFormat, token, model, temperature }) => {
   const openai = new OpenAI({
     apiKey: token,
   });
   
+  let format = null;
+
+  if (responseFormat) {
+    try {
+      format = zodResponseFormat(responseFormat, 'responseFormat');
+    } catch (error) {
+      format = responseFormat;    
+    }
+  }
+  
   const completion = await openai.chat.completions.create({
     model,
     messages,
-    response_format: responseFormat ? zodResponseFormat(responseFormat, 'responseFormat') : null
+    response_format: format ? format : null,
+    temperature: temperature || 0.7
   });
   
   return completion;
@@ -356,6 +367,7 @@ export const generateAIResponse = async ({
   model = DEFAULT_MODEL,
   provider = 'TogetherAI',
   isN8N = false,
+  temperature = 0.7,
 }) => {
   try {
     let completion;
@@ -365,10 +377,10 @@ export const generateAIResponse = async ({
       model = DEFAULT_MODEL;
       token = process.env.TOGETHER_API_KEY;
     }
-    
+
     switch (provider) {
       case 'OpenAI':
-        completion = await generateOpenAIResponse({ messages, responseFormat, token, model });
+        completion = await generateOpenAIResponse({ messages, responseFormat, token, model, temperature });
         break;
         
       case 'GoogleAI':
