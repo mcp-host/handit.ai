@@ -102,7 +102,13 @@ export const getAllAgentsFunction = async (companyId, tourAgent = false) => {
     const agents = await Agent.findAll({ where: { tourAgent: true } });
     return agents;
   }
-  const agents = await Agent.findAll({ where: { companyId, tourAgent } });
+  const agents = await Agent.findAll({ where: { companyId, tourAgent }, include: [{
+    model: AgentNode,
+    include: [{
+      model: Model,
+      as: 'Model',
+    }],
+  }] });
   return agents;
 };
 

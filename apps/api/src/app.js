@@ -6,6 +6,7 @@ import { Sequelize } from 'sequelize';
 import cors from 'cors';
 import compression from 'compression';
 import authRoutes from './routes/authRoutes.js';
+import cliAuthRoutes from './routes/cliAuthRoutes.js';
 import agentStructureRoutes from './routes/agentStructureRoutes.js';
 
 // Importing all route files
@@ -86,6 +87,7 @@ app.use('/api/email-autonom', emailAutonomRoutes);
 
 // Public routes
 app.use('/api/auth', authRoutes);
+app.use('/api/cli/auth', cliAuthRoutes);
 app.use('/api/sampling', validateApiToken, samplingRoutes);
 app.use('/api/node-metrics', validateApiToken, nodeMetricsRoutes);
 app.use('/api/messages', validateApiToken, messageRouter);

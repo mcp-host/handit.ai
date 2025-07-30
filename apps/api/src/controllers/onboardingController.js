@@ -356,6 +356,56 @@ Generate a quick setup guide with a descriptive title, brief overview, and essen
 /**
  * Test connection by checking if the company has at least one agent
  */
+
+export const testConnectionCLI = async (req, res) => {
+  try {
+    // Get company ID from various sources (auth middleware sets different properties)
+    const companyId = 
+      req.company?.id ||           // API token auth
+      req.userObject?.companyId || // JWT auth
+      req.user?.companyId ||       // Fallback
+      req.body.companyId ||        // Request body
+      req.params.companyId;        // URL params
+
+    const agentName = req.body.agentName;
+    
+    if (!companyId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Company ID is required. Please ensure you are authenticated.'
+      });
+    }
+
+    // Check if the company has at least one agent
+    const agentCount = await db.Agent.count({
+      where: {
+        company_id: companyId,
+        deleted_at: null, // Only count non-deleted agents
+        name: agentName
+      }
+    });
+
+    const hasAgents = agentCount > 0;
+
+    res.json({
+      success: true,
+      connected: hasAgents,
+      agentCount: agentCount,
+      message: hasAgents 
+        ? `Connection successful! Found ${agentCount} agent${agentCount > 1 ? 's' : ''} connected to HandIt.`
+        : 'No agents connected yet. Please follow the setup instructions to connect your first agent.'
+    });
+
+  } catch (error) {
+    console.error('Error testing connection:', error);
+    res.status(500).json({
+      success: false,
+      connected: false,
+      error: 'Failed to test connection',
+      details: error.message
+    });
+  }
+};
 export const testConnection = async (req, res) => {
   try {
     // Get company ID from various sources (auth middleware sets different properties)

@@ -4,7 +4,7 @@ import archiver from 'archiver';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { generatePersonalizedSetup, testConnection } from '../controllers/onboardingController.js';
+import { generatePersonalizedSetup, testConnection, testConnectionCLI } from '../controllers/onboardingController.js';
 import authenticateJWT from '../middleware/authMiddleware.js';
 
 const { Agent, AgentNode, AgentConnection } = db;
@@ -306,5 +306,6 @@ router.post('/generate-personalized', generatePersonalizedSetup);
 
 // Test connection by checking if company has agents (requires authentication)
 router.post('/test-connection', authenticateJWT, testConnection);
+router.post('/test-connection-cli', authenticateJWT, testConnectionCLI);
 
 export default router; 

@@ -24,6 +24,7 @@ import { reviewersTemplateApi } from '@/services/reviewersTemplateService';
 import { integrationTokenApi } from '@/services/integrationTokenService';
 import { evaluatorMetricApi } from '@/services/evaluatorMetricService';
 import { providerApi } from '@/services/providerService';
+import { cliAuthApi } from '@/services/cliAuthService';
 
 /**
  * Combined reducer for all application state
@@ -55,6 +56,7 @@ const appReducer = combineReducers({
   [integrationTokenApi.reducerPath]: integrationTokenApi.reducer,
   [evaluatorMetricApi.reducerPath]: evaluatorMetricApi.reducer,
   [providerApi.reducerPath]: providerApi.reducer,
+  [cliAuthApi.reducerPath]: cliAuthApi.reducer,
 });
 
 /**
@@ -107,5 +109,6 @@ export const store = configureStore({
       .concat(reviewersTemplateApi.middleware)
       .concat(integrationTokenApi.middleware)
       .concat(evaluatorMetricApi.middleware)
-      .concat(providerApi.middleware),
+      .concat(providerApi.middleware)
+      .concat(cliAuthApi.middleware),
 });
