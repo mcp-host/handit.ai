@@ -7,6 +7,7 @@ import cors from 'cors';
 import compression from 'compression';
 import authRoutes from './routes/authRoutes.js';
 import cliAuthRoutes from './routes/cliAuthRoutes.js';
+import githubRoutes from './routes/githubRoutes.js';
 import agentStructureRoutes from './routes/agentStructureRoutes.js';
 
 // Importing all route files
@@ -49,6 +50,7 @@ import promptRoutes from './routes/promptRoutes.js';
 import emailRoutes from './routes/emailRoutes.js';
 import notificationSystemRoutes from './routes/notificationSystemRoutes.js';
 import emailAutonomRoutes from './routes/emailAutonomRoutes.js';
+import promptOptimizationRoutes from './routes/promptOptimizationRoutes.js';
 
 dotenv.config();
 
@@ -88,6 +90,7 @@ app.use('/api/email-autonom', emailAutonomRoutes);
 // Public routes
 app.use('/api/auth', authRoutes);
 app.use('/api/cli/auth', cliAuthRoutes);
+app.use('/api/git', githubRoutes);
 app.use('/api/sampling', validateApiToken, samplingRoutes);
 app.use('/api/node-metrics', validateApiToken, nodeMetricsRoutes);
 app.use('/api/messages', validateApiToken, messageRouter);
@@ -133,6 +136,7 @@ app.use('/api/integration-tokens', integrationTokenRoutes);
 app.use('/api/evaluator-metrics', evaluatorMetricRoutes);
 app.use('/api/providers', providersRoutes);
 app.use('/api/reviewers-template', reviewersTemplateRoutes);
+app.use('/api/prompt-optimization', promptOptimizationRoutes);
 
 // Add sampling routes
 
