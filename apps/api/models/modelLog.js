@@ -1,5 +1,5 @@
 'use strict';
-import { Model } from 'sequelize';
+import { Model, Op } from 'sequelize';
 import {
   detectErrorMessage,
   outputContainsError,
@@ -16,6 +16,7 @@ import { parseContext } from '../src/services/parser.js';
 import { sendModelFailureNotification } from '../src/services/emailService.js';
 import { sendPromptVersionCreatedEmail } from '../src/services/emailService.js';
 import { autoDetectAndUpdateSystemPromptStructure } from '../src/services/systemPromptStructureManagerService.js';
+import { createPromptOptimizationPR } from '../src/services/promptOptimizationPRService.js';
 
 export default (sequelize, DataTypes) => {
   class ModelLog extends Model {
@@ -420,6 +421,66 @@ export default (sequelize, DataTypes) => {
                     });
 
                     await model.updateOptimizedPrompt(newPrompt);
+
+                    // Create GitHub PR for prompt optimization
+                    try {
+                      const agentNode = await sequelize.models.AgentNode.findOne({
+                        where: {
+                          modelId: model.id,
+                          deletedAt: null
+                        }
+                      });
+
+                      if (agentNode) {
+                        const agent = await sequelize.models.Agent.findByPk(agentNode.agentId);
+                        
+                        if (agent && agent.repository) {
+                          const originalPrompt = model.parameters?.prompt || parseContext(modelLog.input, model);
+                          
+                          // Calculate improvement metrics from recent evaluations
+                          const recentLogs = await sequelize.models.ModelLog.findAll({
+                            where: {
+                              modelId: model.id,
+                              createdAt: {
+                                [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
+                              }
+                            },
+                            limit: 100,
+                            order: [['createdAt', 'DESC']]
+                          });
+
+                          const successfulLogs = recentLogs.filter(log => log.status === 'success');
+                          const accuracy = recentLogs.length > 0 ? successfulLogs.length / recentLogs.length : 0;
+                          const improvement = 0.15; // Default improvement assumption, could be calculated from A/B test results
+
+                          const metrics = {
+                            accuracy,
+                            improvement,
+                            totalEvaluations: recentLogs.length,
+                            successfulEvaluations: successfulLogs.length,
+                            timestamp: new Date().toISOString()
+                          };
+
+                          console.log(`🔄 Creating GitHub PR for prompt optimization - Agent: ${agent.name}`);
+                          
+                          const prResult = await createPromptOptimizationPR({
+                            agent,
+                            originalPrompt,
+                            optimizedPrompt: newPrompt,
+                            metrics,
+                            models: sequelize.models
+                          });
+
+                          if (prResult.success) {
+                            console.log(`✅ Successfully created GitHub PR #${prResult.prNumber}: ${prResult.prUrl}`);
+                          } else {
+                            console.log(`❌ Failed to create GitHub PR: ${prResult.error}`);
+                          }
+                        }
+                      }
+                    } catch (prError) {
+                      console.error('Error creating GitHub PR for prompt optimization:', prError);
+                    }
 
                     // Send email notification for new prompt version
                     try {

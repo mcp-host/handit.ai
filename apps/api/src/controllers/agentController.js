@@ -34,6 +34,7 @@ export const getAllAgents = async (req, res) => {
     const { companyId } = userObject;
     const tourAgent = req.query.tourAgent === 'true';
     const agents = await getAllAgentsFunction(companyId, tourAgent);
+
     res.status(200).json(agents);
   } catch (error) {
     res.status(400).json({ error: error.message });

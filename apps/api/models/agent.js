@@ -113,6 +113,11 @@ export default (sequelize, DataTypes) => {
       field: 'auto_stop',
       comment: 'Flag to indicate if agent should automatically stop and close logs when reaching an end node'
     },
+    repository: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'repository'
+    },
     tourAgent: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
