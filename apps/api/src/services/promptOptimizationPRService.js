@@ -191,11 +191,14 @@ export const createPromptOptimizationPR = async ({
     // Step 8: Apply code changes to the new branch
     for (const replacement of codeReplacements) {
       console.log(`📝 Updating file: ${replacement.filePath}`);
+      const accuracyImprovement = metrics.accuracy_improvement || metrics.improvement || 0;
+      const commitMessage = generateCommitMessage(agent, accuracyImprovement, replacement.filePath, metrics);
+      
       await githubClient.createOrUpdateFile(
         repoInfo.owner,
         repoInfo.repo,
         replacement.filePath,
-        `Optimize prompt in ${replacement.filePath}\n\nImproved prompt performance based on Handit evaluation metrics.`,
+        commitMessage,
         replacement.newContent,
         replacement.sha,
         branchName
@@ -203,8 +206,9 @@ export const createPromptOptimizationPR = async ({
     }
 
     // Step 9: Create Pull Request
-    const prTitle = `🚀 Optimize AI Prompt - Improved Performance by ${formatPercentage(metrics.improvement || 0)}`;
-    const prBody = generatePRDescription(originalPrompt, optimizedPrompt, metrics, validPromptLocations);
+    const accuracyImprovement = metrics.accuracy_improvement || metrics.improvement || 0;
+    const prTitle = `🔁 Auto-optimized prompt for "${agent.name}" — +${formatPercentage(accuracyImprovement)} accuracy improvement`;
+    const prBody = generatePRDescription(agent, originalPrompt, optimizedPrompt, metrics, validPromptLocations);
 
     console.log(`📋 Creating Pull Request: ${prTitle}`);
     const pr = await githubClient.createPullRequest(
@@ -266,8 +270,8 @@ export const createPromptOptimizationPR = async ({
 const parseRepositoryUrl = (repositoryUrl) => {
   try {
     const patterns = [
-      /github\.com\/([^\/]+)\/([^\/]+?)(?:\.git)?(?:\/.*)?$/,
-      /^([^\/]+)\/([^\/]+)$/
+      /github\.com\/([^/]+)\/([^/]+?)(?:\.git)?(?:\/.*)?$/,
+      /^([^/]+)\/([^/]+)$/
     ];
 
     for (const pattern of patterns) {
@@ -873,31 +877,164 @@ const getLatestCommitSha = async (githubClient, owner, repo, branch) => {
 };
 
 /**
+ * Generates a commit message for the prompt optimization
+ * 
+ * @param {Object} agent - The agent model instance
+ * @param {number} accuracyImprovement - Accuracy improvement percentage
+ * @param {string} filePath - File path being modified
+ * @param {Object} metrics - Performance metrics
+ * @returns {string} Formatted commit message
+ */
+const generateCommitMessage = (agent, accuracyImprovement, filePath, metrics) => {
+  const improvementText = formatPercentage(accuracyImprovement);
+  const beforeAccuracy = metrics.accuracy_before || metrics.before_accuracy || 0;
+  const afterAccuracy = metrics.accuracy_after || metrics.after_accuracy || beforeAccuracy + accuracyImprovement;
+  const errorRateReduction = metrics.error_rate_reduction || 0;
+  
+  const title = `feat(prompt): auto-optimized "${agent.name}" prompt — +${improvementText} accuracy${errorRateReduction > 0 ? ', reduced hallucinations' : ''}`;
+  
+  const body = `This commit updates the prompt for the "${agent.name}" model as part of Handit's automatic optimization process.
+
+### What changed:
+- Rephrased task instructions to be more explicit and deterministic
+- Added structured format hints to reduce ambiguity  
+- Reordered prompt sections to align better with input flow
+
+### Why it changed:
+${metrics.optimization_reason || 'Evaluation showed performance issues in production logs. This prompt version was automatically generated and validated using Handit\'s evaluation engine.'}
+
+### Impact:
+- Accuracy improved from ${formatPercentage(beforeAccuracy)} → ${formatPercentage(afterAccuracy)} (+${improvementText})${metrics.f1_score_before && metrics.f1_score_after ? `
+- F1 Score improved from ${metrics.f1_score_before.toFixed(2)} → ${metrics.f1_score_after.toFixed(2)}` : ''}${errorRateReduction > 0 ? `
+- Hallucination rate dropped by ${formatPercentage(errorRateReduction)}` : ''}
+
+Prompt version bumped from \`${metrics.version_before || 'v1.0.0'}\` to \`${metrics.version_after || 'v1.1.0'}\`.`;
+
+  return title + '\n\n' + body;
+};
+
+/**
+ * Generates a metrics comparison table for the PR description
+ * 
+ * @param {Object} metrics - Performance metrics object
+ * @returns {string} Formatted metrics table
+ */
+const generateMetricsTable = (metrics) => {
+  const rows = [];
+  
+  // Standard metrics to include
+  const metricConfigs = [
+    { 
+      key: 'accuracy', 
+      label: 'Accuracy',
+      beforeKey: 'accuracy_before',
+      afterKey: 'accuracy_after',
+      format: 'percentage'
+    },
+    { 
+      key: 'f1_score', 
+      label: 'F1 Score',
+      beforeKey: 'f1_score_before',
+      afterKey: 'f1_score_after',
+      format: 'decimal'
+    },
+    { 
+      key: 'error_rate', 
+      label: 'Error Rate',
+      beforeKey: 'error_rate_before',
+      afterKey: 'error_rate_after',
+      format: 'percentage',
+      invert: true // Lower is better
+    },
+    { 
+      key: 'precision', 
+      label: 'Precision',
+      beforeKey: 'precision_before',
+      afterKey: 'precision_after',
+      format: 'percentage'
+    },
+    { 
+      key: 'recall', 
+      label: 'Recall',
+      beforeKey: 'recall_before',
+      afterKey: 'recall_after',
+      format: 'percentage'
+    }
+  ];
+
+  for (const config of metricConfigs) {
+    const beforeValue = metrics[config.beforeKey];
+    const afterValue = metrics[config.afterKey];
+    
+    if (beforeValue !== undefined && afterValue !== undefined) {
+      const beforeFormatted = config.format === 'percentage' 
+        ? formatPercentage(beforeValue) 
+        : beforeValue.toFixed(2);
+        
+      const afterFormatted = config.format === 'percentage' 
+        ? formatPercentage(afterValue) 
+        : afterValue.toFixed(2);
+      
+      const change = afterValue - beforeValue;
+      const changeFormatted = config.format === 'percentage' 
+        ? formatPercentage(Math.abs(change)) 
+        : Math.abs(change).toFixed(2);
+      
+      const isImprovement = config.invert ? change < 0 : change > 0;
+      const changeIcon = isImprovement ? '🔼' : '🔽';
+      const changeSign = config.invert 
+        ? (change < 0 ? '-' : '+')
+        : (change > 0 ? '+' : '-');
+      
+      rows.push(`| ${config.label} | ${beforeFormatted} | ${afterFormatted} | ${changeIcon} ${changeSign}${changeFormatted} |`);
+    }
+  }
+
+  if (rows.length === 0) {
+    // Fallback if no specific metrics are available
+    const improvement = metrics.improvement || metrics.accuracy_improvement || 0;
+    const accuracy = metrics.accuracy || metrics.after_accuracy || 0;
+    const beforeAccuracy = accuracy - improvement;
+    
+    rows.push(`| Accuracy | ${formatPercentage(beforeAccuracy)} | ${formatPercentage(accuracy)} | 🔼 +${formatPercentage(improvement)} |`);
+  }
+
+  const header = `| Metric        | Before | After  | Δ Change |
+|---------------|--------|--------|----------|`;
+
+  return header + '\n' + rows.join('\n');
+};
+
+/**
  * Generates the Pull Request description
  * 
+ * @param {Object} agent - The agent model instance
  * @param {string} originalPrompt - Original prompt text
  * @param {string} optimizedPrompt - Optimized prompt text
  * @param {Object} metrics - Performance metrics
  * @param {Array} locations - Prompt locations found
  * @returns {string} PR description markdown
  */
-const generatePRDescription = (originalPrompt, optimizedPrompt, metrics, locations) => {
-  const improvement = metrics.improvement || 0;
-  const accuracy = metrics.accuracy || 0;
+const generatePRDescription = (agent, originalPrompt, optimizedPrompt, metrics, locations) => {
+  const currentDate = new Date().toISOString().split('T')[0];
+  const optimizationType = metrics.optimization_type || 'Prompt rewrite based on evaluation feedback';
+  const reason = metrics.optimization_reason || 'Performance optimization based on Handit evaluation metrics';
 
-  return `## 🚀 Automated Prompt Optimization by Handit
+  // Generate metrics table
+  const metricsTable = generateMetricsTable(metrics);
 
-This Pull Request contains an optimized AI prompt that has been automatically tested and validated to improve performance.
+  return `## 🤖 Handit Auto-Optimization Summary
 
-### 📊 Performance Improvements
+**Model:** \`${agent.name}\`  
+**Date:** ${currentDate}  
+**Optimization Type:** ${optimizationType}  
+**Reason:** ${reason}
 
-- **Overall Improvement**: ${formatPercentage(improvement)}
-- **Current Accuracy**: ${formatPercentage(accuracy)}
-- **Files Modified**: ${locations.length}
+---
 
-### 🔍 Changes Made
+### 📈 Metrics Before vs After
 
-${locations.map(loc => `- \`${loc.filePath}\``).join('\n')}
+${metricsTable}
 
 ### 📝 Prompt Changes
 
@@ -918,6 +1055,10 @@ ${optimizedPrompt}
 \`\`\`
 
 </details>
+
+### 🔍 Files Modified
+
+${locations.map(loc => `- \`${loc.filePath}\``).join('\n')}
 
 ### 🤖 About This Optimization
 
@@ -947,7 +1088,7 @@ This prompt optimization was automatically generated by Handit's AI evaluation s
  */
 const generateMetricsComment = (metrics, locations) => {
   const metricsEntries = Object.entries(metrics)
-    .filter(([key, value]) => typeof value === 'number')
+    .filter(([, value]) => typeof value === 'number')
     .map(([key, value]) => `- **${key.charAt(0).toUpperCase() + key.slice(1)}**: ${formatMetricValue(key, value)}`)
     .join('\n');
 
