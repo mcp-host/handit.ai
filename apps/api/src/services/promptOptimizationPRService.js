@@ -439,6 +439,187 @@ const generateSearchStrategies = (originalPrompt) => {
     }
   }
 
+  // Strategy 6: Middle sections (extract content from middle portions)
+  if (prompt.length > 100) {
+    const quarterLen = Math.floor(prompt.length / 4);
+    const middleSection = prompt.substring(quarterLen, prompt.length - quarterLen);
+    if (middleSection.length > 20) {
+      strategies.push({
+        name: 'middle_section',
+        query: escapeForSearch(middleSection),
+        confidence: 0.65
+      });
+    }
+  }
+
+  // Strategy 7: Divide and conquer - recursive chunking
+  const divideAndConquerStrategies = generateDivideAndConquerStrategies(prompt);
+  strategies.push(...divideAndConquerStrategies);
+
+  // Strategy 8: Word-based combinations (meaningful word groups)
+  const wordStrategies = generateWordBasedStrategies(prompt);
+  strategies.push(...wordStrategies);
+
+  // Strategy 9: Overlapping windows
+  const windowStrategies = generateOverlappingWindowStrategies(prompt);
+  strategies.push(...windowStrategies);
+
+  return strategies;
+};
+
+/**
+ * Generates divide and conquer strategies by recursively splitting the prompt
+ * 
+ * @param {string} text - The text to divide
+ * @param {number} depth - Current recursion depth
+ * @param {string} prefix - Prefix for strategy naming
+ * @returns {Array} Array of divide and conquer strategies
+ */
+const generateDivideAndConquerStrategies = (text, depth = 0, prefix = 'divide') => {
+  const strategies = [];
+  const maxDepth = 5; // Prevent infinite recursion
+  const minWords = 3;
+  
+  if (depth >= maxDepth) return strategies;
+  
+  const words = text.trim().split(/\s+/);
+  if (words.length < minWords * 2) return strategies; // Need at least 6 words to split meaningfully
+  
+  const baseConfidence = 0.5 - (depth * 0.1); // Decrease confidence with depth
+  
+  // Split into thirds for better coverage
+  const thirdLength = Math.floor(words.length / 3);
+  
+  if (thirdLength >= minWords) {
+    // First third
+    const firstThird = words.slice(0, thirdLength).join(' ');
+    strategies.push({
+      name: `${prefix}_first_third_d${depth}`,
+      query: escapeForSearch(firstThird),
+      confidence: Math.max(baseConfidence, 0.2)
+    });
+    
+    // Middle third
+    const middleThird = words.slice(thirdLength, thirdLength * 2).join(' ');
+    strategies.push({
+      name: `${prefix}_middle_third_d${depth}`,
+      query: escapeForSearch(middleThird),
+      confidence: Math.max(baseConfidence, 0.2)
+    });
+    
+    // Last third
+    const lastThird = words.slice(thirdLength * 2).join(' ');
+    strategies.push({
+      name: `${prefix}_last_third_d${depth}`,
+      query: escapeForSearch(lastThird),
+      confidence: Math.max(baseConfidence, 0.2)
+    });
+    
+    // Recursively apply to each third if they're still large enough
+    if (thirdLength > minWords * 2) {
+      strategies.push(...generateDivideAndConquerStrategies(firstThird, depth + 1, `${prefix}_1st`));
+      strategies.push(...generateDivideAndConquerStrategies(middleThird, depth + 1, `${prefix}_mid`));
+      strategies.push(...generateDivideAndConquerStrategies(lastThird, depth + 1, `${prefix}_3rd`));
+    }
+  }
+  
+  return strategies;
+};
+
+/**
+ * Generates word-based strategies focusing on meaningful word combinations
+ * 
+ * @param {string} text - The text to analyze
+ * @returns {Array} Array of word-based strategies
+ */
+const generateWordBasedStrategies = (text) => {
+  const strategies = [];
+  const words = text.trim().split(/\s+/).filter(word => word.length > 2);
+  
+  if (words.length < 3) return strategies;
+  
+  // Strategy: First 3-5 words
+  if (words.length >= 3) {
+    const firstWords = words.slice(0, Math.min(5, words.length)).join(' ');
+    strategies.push({
+      name: 'first_words',
+      query: escapeForSearch(firstWords),
+      confidence: 0.55
+    });
+  }
+  
+  // Strategy: Last 3-5 words
+  if (words.length >= 3) {
+    const lastWords = words.slice(-Math.min(5, words.length)).join(' ');
+    strategies.push({
+      name: 'last_words',
+      query: escapeForSearch(lastWords),
+      confidence: 0.55
+    });
+  }
+  
+  // Strategy: Important words (longer words, typically more meaningful)
+  const importantWords = words
+    .filter(word => word.length > 4)
+    .slice(0, 5)
+    .join(' ');
+  
+  if (importantWords.split(' ').length >= 3) {
+    strategies.push({
+      name: 'important_words',
+      query: escapeForSearch(importantWords),
+      confidence: 0.45
+    });
+  }
+  
+  // Strategy: Every nth word pattern (skip words for broader matching)
+  if (words.length > 6) {
+    const nthWords = words.filter((_, index) => index % 2 === 0).slice(0, 6).join(' ');
+    if (nthWords.split(' ').length >= 3) {
+      strategies.push({
+        name: 'nth_words_pattern',
+        query: escapeForSearch(nthWords),
+        confidence: 0.35
+      });
+    }
+  }
+  
+  return strategies;
+};
+
+/**
+ * Generates overlapping window strategies for better coverage
+ * 
+ * @param {string} text - The text to analyze
+ * @returns {Array} Array of overlapping window strategies
+ */
+const generateOverlappingWindowStrategies = (text) => {
+  const strategies = [];
+  const words = text.trim().split(/\s+/);
+  
+  if (words.length < 6) return strategies; // Need enough words for meaningful windows
+  
+  const windowSize = Math.min(8, Math.floor(words.length / 3)); // Adaptive window size
+  const stepSize = Math.max(2, Math.floor(windowSize / 2)); // 50% overlap
+  
+  let windowIndex = 0;
+  for (let i = 0; i <= words.length - windowSize; i += stepSize) {
+    const window = words.slice(i, i + windowSize).join(' ');
+    const wordsInWindow = window.split(' ').length;
+    
+    if (wordsInWindow >= 3) {
+      strategies.push({
+        name: `window_${windowIndex}`,
+        query: escapeForSearch(window),
+        confidence: 0.4 - (windowIndex * 0.05) // Decreasing confidence for later windows
+      });
+      windowIndex++;
+    }
+    
+    // Limit number of windows to prevent too many strategies
+    if (windowIndex >= 5) break;
+  }
+  
   return strategies;
 };
 
