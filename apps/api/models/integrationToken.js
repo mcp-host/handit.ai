@@ -74,6 +74,17 @@ export default (sequelize, DataTypes) => {
         name: 'unique_company_provider_type',
       },
     ],
+    hooks: {
+      afterCreate: async (integrationToken) => {
+        const company = await sequelize.models.Company.findByPk(integrationToken.companyId);
+        if (company) {
+          if (company.optimizationTokenId === null) {
+            company.optimizationTokenId = integrationToken.id;
+            await company.save();
+          }
+        }
+      },
+    },
   });
   return IntegrationToken;
 }; 
