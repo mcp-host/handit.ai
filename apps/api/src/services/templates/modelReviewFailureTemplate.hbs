@@ -145,16 +145,12 @@
       <img class="logo" src="cid:logo-image" alt="Handit.ai Logo" />
       
       <div class="greeting">
-        Hey there,
+        Hello,
       </div>
 
       <p class="main-text">
-        I'm Cristhian, CTO at Handit.ai.
-      </p>
-
-      <p class="main-text">
-        Handit just caught an issue with one of your AI models and I wanted to let you know right away. 
-        Here's what we saw:
+        Handit has detected an issue with one of your AI models and is automatically working on a fix. 
+        Here's what we found:
       </p>
 
       <div class="details-box">
@@ -164,25 +160,21 @@
       </div>
 
       <p class="main-text">
-        The good news? Handit can automatically fix this for you. I'd recommend starting with the auto-fix, 
-        but you can also dive into the full details in your dashboard.
+        Handit is currently analyzing this issue and will automatically implement a fix when ready. 
+        You can review the full details and monitor the progress in your dashboard.
       </p>
 
       <div class="button-container">
-        {{#if optimize_url}}
-        <a href="{{optimize_url}}" class="button">🔧 Fix Issue Automatically</a>
-        {{/if}}
-        <a href="{{tracing_url}}" class="button button-secondary">📊 Review Details</a>
+        <a href="{{tracing_url}}" class="button">Review Details</a>
       </div>
 
       <p class="main-text">
-        This is exactly why we built Handit—to catch these issues before they impact your users 
-        and give you one-click fixes instead of manual debugging.
+        Our automated monitoring continuously watches your models to catch issues before they impact 
+        your users and applies fixes automatically when possible.
       </p>
 
       <div class="signature">
-        <div class="signature-name">— Cristhian</div>
-        <div class="signature-title">CTO & Co‑Founder</div>
+        <div class="signature-name">— The Handit Team</div>
         <div class="signature-company">Handit.ai</div>
       </div>
     </div>
