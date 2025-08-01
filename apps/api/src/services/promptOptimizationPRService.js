@@ -755,6 +755,7 @@ Rules:
 4. Keep all surrounding code exactly as is
 5. If the prompt spans multiple lines, maintain the line structure
 6. Ensure the replacement fits naturally in the existing code context
+7. Only replace the the content that it the prompt, not any other prompt, only the originalPrompt replace it, not any other prompt.
 
 Provide the complete new file content with only the prompt text replaced.`
         },
@@ -773,7 +774,7 @@ Current File Content:
 ${location.content}
 \`\`\`
 
-Please provide the updated file content with the prompt replaced. Also explain what changes were made.`
+Please provide the updated file content with the prompt replaced. Also explain what changes were made. Only replace the originalPrompt with the optimizedPrompt, not any other prompt.`
         }
       ];
       const token = process.env.OPENAI_API_KEY
