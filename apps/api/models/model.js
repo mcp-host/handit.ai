@@ -629,7 +629,7 @@ export default (sequelize, DataTypes) => {
           },
           status: 'error',
         },
-        limit: 10,
+        limit: 3,
       });
       return logs;
     }
@@ -640,7 +640,7 @@ export default (sequelize, DataTypes) => {
       const insights = [];
       for (let i = 0; i < randomModelLogs.length; i++) {
         const modelLog = modelLogs[i];
-        if (!isCorrect(modelLog) && insights.length < 5) {
+        if (!isCorrect(modelLog) && insights.length < 2) {
           const modelGroup = await this.getModelGroup();
           const company = await modelGroup.getCompany();
           let optimizationToken;
