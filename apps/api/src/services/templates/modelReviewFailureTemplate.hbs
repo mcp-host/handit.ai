@@ -156,7 +156,11 @@
       <div class="details-box">
         <p><span class="label">Agent:</span> {{agent_name}}</p>
         <p><span class="label">Node:</span> {{node_name}}</p>
-        <p><span class="label">Issue Summary:</span><br />{{{reviewer_summary}}}</p>
+        <p><span class="label">Issue Summary:</span><br />
+          {{#each reviewer_summary}}
+            <p>{{this}}</p><br />
+          {{/each}}
+        </p>
       </div>
 
       <p class="main-text">
