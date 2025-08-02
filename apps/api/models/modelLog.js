@@ -4,9 +4,7 @@ import {
   detectErrorMessage,
   outputContainsError,
 } from '../src/services/outputProcessingService.js';
-import {
-  singleEvaluate,
-} from '../src/services/evaluationService.js';
+import { singleEvaluate } from '../src/services/evaluationService.js';
 import { executeCalculateMetricsForModel } from '../src/services/modelMetricLogCalulatorService.js';
 import { evaluateAB } from '../src/services/abTestService.js';
 import { runReview } from '../src/services/insightsService.js';
@@ -128,7 +126,7 @@ export default (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
         defaultValue: '1',
-        comment: 'Version of the model when the log was created'
+        comment: 'Version of the model when the log was created',
       },
     },
     {
@@ -143,7 +141,7 @@ export default (sequelize, DataTypes) => {
               const model = await sequelize.models.Model.findByPk(
                 modelLog.modelId
               );
- 
+
               if (!model.active) {
                 return;
               }
@@ -152,19 +150,32 @@ export default (sequelize, DataTypes) => {
               if (!model.systemPromptStructure) {
                 // If we have 3 or more logs, trigger structure detection
                 try {
-                  console.log(`Triggering system prompt structure detection for model ${model.id} (${model.name})`);
-                  await autoDetectAndUpdateSystemPromptStructure(model.id, sequelize.models.Model, sequelize.models.ModelLog);
+                  console.log(
+                    `Triggering system prompt structure detection for model ${model.id} (${model.name})`
+                  );
+                  await autoDetectAndUpdateSystemPromptStructure(
+                    model.id,
+                    sequelize.models.Model,
+                    sequelize.models.ModelLog
+                  );
                 } catch (error) {
-                  console.error(`Error detecting system prompt structure for model ${model.id}:`, error);
+                  console.error(
+                    `Error detecting system prompt structure for model ${model.id}:`,
+                    error
+                  );
                 }
               }
 
               let prompt = parseContext(modelLog.input, model);
 
-
-              if (!model.isOptimized && prompt && prompt.length > 0 && !modelLog.originalLogId) {
+              if (
+                !model.isOptimized &&
+                prompt &&
+                prompt.length > 0 &&
+                !modelLog.originalLogId
+              ) {
                 const modelVersions = await model.getModelVersions();
-                if (modelVersions.length === 0 ) {
+                if (modelVersions.length === 0) {
                   await model.createModelVersion({
                     prompt: prompt,
                     version: '1',
@@ -213,12 +224,21 @@ export default (sequelize, DataTypes) => {
 
                 // check if model has informative evaluators
                 let informativeEvaluators = await model.allEvaluationPrompts();
-                informativeEvaluators = informativeEvaluators.filter(e => e.isInformative);
-                
+                informativeEvaluators = informativeEvaluators.filter(
+                  (e) => e.isInformative
+                );
+
                 const currentEvaluators = await model.evaluationPrompts();
-                const currentInformativeEvaluators = currentEvaluators.filter(e => e.evaluationPrompt.isInformative);
-                
-                const difference = informativeEvaluators.filter(e => !currentInformativeEvaluators.some(ce => ce.evaluationPrompt.id === e.id));
+                const currentInformativeEvaluators = currentEvaluators.filter(
+                  (e) => e.evaluationPrompt.isInformative
+                );
+
+                const difference = informativeEvaluators.filter(
+                  (e) =>
+                    !currentInformativeEvaluators.some(
+                      (ce) => ce.evaluationPrompt.id === e.id
+                    )
+                );
                 if (difference.length > 0) {
                   for (let i = 0; i < difference.length; i++) {
                     const evaluator = difference[i];
@@ -227,7 +247,6 @@ export default (sequelize, DataTypes) => {
                 }
               }
 
-              
               await redisService.deletePattern(`entries:${modelLog.modelId}:*`);
               if (model.isReviewer) {
                 return;
@@ -273,19 +292,25 @@ export default (sequelize, DataTypes) => {
                 const modelId = modelLog.modelId;
                 const model = await sequelize.models.Model.findByPk(modelId);
                 const prompts = await model.evaluationPrompts();
-                
+
                 // Separate AI evaluators (prompts) from function evaluators
-                const aiEvaluators = prompts.filter(prompt => prompt.evaluationPrompt.type === 'prompt');
-                const functionEvaluators = prompts.filter(prompt => prompt.evaluationPrompt.type === 'function');
+                const aiEvaluators = prompts.filter(
+                  (prompt) => prompt.evaluationPrompt.type === 'prompt'
+                );
+                const functionEvaluators = prompts.filter(
+                  (prompt) => prompt.evaluationPrompt.type === 'function'
+                );
                 let evaluators = [];
                 // Always run function evaluators (100% of the time)
                 if (functionEvaluators.length > 0) {
                   evaluators = [...evaluators, ...functionEvaluators];
                 }
-                
+
                 // Apply percentage only to AI evaluators (prompts)
                 if (aiEvaluators.length > 0) {
-                  const randomNumberFrom0To100 = Math.floor(Math.random() * 101);
+                  const randomNumberFrom0To100 = Math.floor(
+                    Math.random() * 101
+                  );
                   if (randomNumberFrom0To100 <= evaluationPercentage) {
                     evaluators = [...evaluators, ...aiEvaluators];
                   }
@@ -365,16 +390,88 @@ export default (sequelize, DataTypes) => {
                 await model.generateInsights();
                 const newPrompt = await model.applySuggestions();
                 if (newPrompt) {
-                  const existingABTest = await sequelize.models.ABTestModels.findOne({
-                    where: {
-                      modelId: model.id,
-                      principal: true
-                    }
-                  });
-        
+                  const existingABTest =
+                    await sequelize.models.ABTestModels.findOne({
+                      where: {
+                        modelId: model.id,
+                        principal: true,
+                      },
+                    });
+
                   if (existingABTest) {
                     // Update the optimized model version
                     await model.updateOptimizedPrompt(newPrompt);
+
+                    const agentNode = await sequelize.models.AgentNode.findOne({
+                      where: {
+                        modelId: model.id,
+                        deletedAt: null,
+                      },
+                    });
+
+                    const agent = await sequelize.models.Agent.findByPk(
+                      agentNode.agentId
+                    );
+
+                    if (agent && agent.repository) {
+                      const originalPrompt =
+                        model.parameters?.prompt ||
+                        parseContext(modelLog.input, model);
+
+                      // Calculate improvement metrics from recent evaluations
+                      const recentLogs =
+                        await sequelize.models.ModelLog.findAll({
+                          where: {
+                            modelId: model.id,
+                            createdAt: {
+                              [Op.gte]: new Date(
+                                Date.now() - 24 * 60 * 60 * 1000
+                              ), // Last 24 hours
+                            },
+                          },
+                          limit: 100,
+                          order: [['createdAt', 'DESC']],
+                        });
+
+                      const successfulLogs = recentLogs.filter(
+                        (log) => log.status === 'success'
+                      );
+                      const accuracy =
+                        recentLogs.length > 0
+                          ? successfulLogs.length / recentLogs.length
+                          : 0;
+                      const improvement = 0.15; // Default improvement assumption, could be calculated from A/B test results
+
+                      const metrics = {
+                        accuracy,
+                        improvement,
+                        totalEvaluations: recentLogs.length,
+                        successfulEvaluations: successfulLogs.length,
+                        timestamp: new Date().toISOString(),
+                      };
+
+                      console.log(
+                        `🔄 Creating GitHub PR for prompt optimization - Agent: ${agent.name}`
+                      );
+
+                      const prResult = await createPromptOptimizationPR({
+                        agent,
+                        originalPrompt,
+                        optimizedPrompt: newPrompt,
+                        metrics,
+                        models: sequelize.models,
+                      });
+
+                      if (prResult.success) {
+                        console.log(
+                          `✅ Successfully created GitHub PR #${prResult.prNumber}: ${prResult.prUrl}`
+                        );
+                      } else {
+                        console.log(
+                          `❌ Failed to create GitHub PR: ${prResult.error}`
+                        );
+                      }
+                    }
                   } else {
                     // Create a new optimized model
                     const originalModel = model.toJSON();
@@ -387,7 +484,7 @@ export default (sequelize, DataTypes) => {
                       isOptimized: true,
                       parameters: {
                         prompt: newPrompt,
-                        problemType: model.parameters?.problemType
+                        problemType: model.parameters?.problemType,
                       },
                       problemType: model.problemType,
                     });
@@ -398,7 +495,7 @@ export default (sequelize, DataTypes) => {
                       await sequelize.models.ModelMetric.create({
                         ...metric.toJSON(),
                         id: undefined,
-                        modelId: optimizedModel.id
+                        modelId: optimizedModel.id,
                       });
                     }
 
@@ -408,7 +505,7 @@ export default (sequelize, DataTypes) => {
                         modelId: optimizedModel.id,
                         model_id: model.id,
                         reviewer_id: reviewer.reviewerId,
-                        reviewerId: reviewer.reviewerId
+                        reviewerId: reviewer.reviewerId,
                       });
                     }
 
@@ -417,40 +514,53 @@ export default (sequelize, DataTypes) => {
                       modelId: model.id,
                       optimizedModelId: optimizedModel.id,
                       principal: true,
-                      percentage: 30
+                      percentage: 30,
                     });
 
                     await model.updateOptimizedPrompt(newPrompt);
 
                     // Create GitHub PR for prompt optimization
                     try {
-                      const agentNode = await sequelize.models.AgentNode.findOne({
-                        where: {
-                          modelId: model.id,
-                          deletedAt: null
-                        }
-                      });
+                      const agentNode =
+                        await sequelize.models.AgentNode.findOne({
+                          where: {
+                            modelId: model.id,
+                            deletedAt: null,
+                          },
+                        });
 
                       if (agentNode) {
-                        const agent = await sequelize.models.Agent.findByPk(agentNode.agentId);
-                        
-                        if (agent && agent.repository) {
-                          const originalPrompt = model.parameters?.prompt || parseContext(modelLog.input, model);
-                          
-                          // Calculate improvement metrics from recent evaluations
-                          const recentLogs = await sequelize.models.ModelLog.findAll({
-                            where: {
-                              modelId: model.id,
-                              createdAt: {
-                                [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
-                              }
-                            },
-                            limit: 100,
-                            order: [['createdAt', 'DESC']]
-                          });
+                        const agent = await sequelize.models.Agent.findByPk(
+                          agentNode.agentId
+                        );
 
-                          const successfulLogs = recentLogs.filter(log => log.status === 'success');
-                          const accuracy = recentLogs.length > 0 ? successfulLogs.length / recentLogs.length : 0;
+                        if (agent && agent.repository) {
+                          const originalPrompt =
+                            model.parameters?.prompt ||
+                            parseContext(modelLog.input, model);
+
+                          // Calculate improvement metrics from recent evaluations
+                          const recentLogs =
+                            await sequelize.models.ModelLog.findAll({
+                              where: {
+                                modelId: model.id,
+                                createdAt: {
+                                  [Op.gte]: new Date(
+                                    Date.now() - 24 * 60 * 60 * 1000
+                                  ), // Last 24 hours
+                                },
+                              },
+                              limit: 100,
+                              order: [['createdAt', 'DESC']],
+                            });
+
+                          const successfulLogs = recentLogs.filter(
+                            (log) => log.status === 'success'
+                          );
+                          const accuracy =
+                            recentLogs.length > 0
+                              ? successfulLogs.length / recentLogs.length
+                              : 0;
                           const improvement = 0.15; // Default improvement assumption, could be calculated from A/B test results
 
                           const metrics = {
@@ -458,60 +568,75 @@ export default (sequelize, DataTypes) => {
                             improvement,
                             totalEvaluations: recentLogs.length,
                             successfulEvaluations: successfulLogs.length,
-                            timestamp: new Date().toISOString()
+                            timestamp: new Date().toISOString(),
                           };
 
-                          console.log(`🔄 Creating GitHub PR for prompt optimization - Agent: ${agent.name}`);
-                          
+                          console.log(
+                            `🔄 Creating GitHub PR for prompt optimization - Agent: ${agent.name}`
+                          );
+
                           const prResult = await createPromptOptimizationPR({
                             agent,
                             originalPrompt,
                             optimizedPrompt: newPrompt,
                             metrics,
-                            models: sequelize.models
+                            models: sequelize.models,
                           });
 
                           if (prResult.success) {
-                            console.log(`✅ Successfully created GitHub PR #${prResult.prNumber}: ${prResult.prUrl}`);
+                            console.log(
+                              `✅ Successfully created GitHub PR #${prResult.prNumber}: ${prResult.prUrl}`
+                            );
                           } else {
-                            console.log(`❌ Failed to create GitHub PR: ${prResult.error}`);
+                            console.log(
+                              `❌ Failed to create GitHub PR: ${prResult.error}`
+                            );
                           }
                         }
                       }
                     } catch (prError) {
-                      console.error('Error creating GitHub PR for prompt optimization:', prError);
+                      console.error(
+                        'Error creating GitHub PR for prompt optimization:',
+                        prError
+                      );
                     }
 
                     // Send email notification for new prompt version
                     try {
                       // Get the agent information
-                      const agentNode = await sequelize.models.AgentNode.findOne({
-                        where: {
-                          modelId: model.id,
-                          deletedAt: null
-                        }
-                      });
+                      const agentNode =
+                        await sequelize.models.AgentNode.findOne({
+                          where: {
+                            modelId: model.id,
+                            deletedAt: null,
+                          },
+                        });
 
                       if (agentNode) {
-                        const agent = await sequelize.models.Agent.findByPk(agentNode.agentId);
-                        const company = await sequelize.models.Company.findByPk(agent.companyId);
-                        
+                        const agent = await sequelize.models.Agent.findByPk(
+                          agentNode.agentId
+                        );
+                        const company = await sequelize.models.Company.findByPk(
+                          agent.companyId
+                        );
+
                         // Get users of the company
                         const users = await sequelize.models.User.findAll({
                           where: {
                             companyId: company.id,
-                            deletedAt: null
-                          }
+                            deletedAt: null,
+                          },
                         });
 
                         // Get the prompt version
-                        const modelVersions = await sequelize.models.ModelVersions.findAll({
-                          where: {
-                            modelId: model.id
-                          },
-                          order: [['createdAt', 'DESC']],
-                          limit: 1
-                        });
+                        const modelVersions =
+                          await sequelize.models.ModelVersions.findAll({
+                            where: {
+                              modelId: model.id,
+                            },
+                            order: [['createdAt', 'DESC']],
+                            limit: 1,
+                          });
 
                         const promptVersion = modelVersions[0]?.version || '1';
 
@@ -528,18 +653,24 @@ export default (sequelize, DataTypes) => {
                             Email: sequelize.models.Email,
                             User: sequelize.models.User,
                             notificationSource: 'prompt_version_created',
-                            sourceId: model.id
+                            sourceId: model.id,
                           });
                         }
                       }
                     } catch (emailError) {
-                      console.error('Error sending prompt version created email:', emailError);
+                      console.error(
+                        'Error sending prompt version created email:',
+                        emailError
+                      );
                     }
-
                   }
                 }
               }
-              if (!model.isReviewer && !model.isOptimized && !modelLog.originalLogId) {
+              if (
+                !model.isReviewer &&
+                !model.isOptimized &&
+                !modelLog.originalLogId
+              ) {
                 await model.saveABCorrectEntriesByDayInCache();
                 await model.saveABMetricsInCache();
                 await model.saveModelMetricsInCache();
@@ -612,9 +743,18 @@ export default (sequelize, DataTypes) => {
                     status: 'failed_model',
                   });
                 }
-                
+
                 // Send email notification for model failure
-                await sendModelFailureNotification(modelLog, sequelize.models.Model, sequelize.models.AgentLog, sequelize.models.Agent, sequelize.models.AgentNode, sequelize.models.Company, sequelize.models.Email, sequelize.models.User);
+                await sendModelFailureNotification(
+                  modelLog,
+                  sequelize.models.Model,
+                  sequelize.models.AgentLog,
+                  sequelize.models.Agent,
+                  sequelize.models.AgentNode,
+                  sequelize.models.Company,
+                  sequelize.models.Email,
+                  sequelize.models.User
+                );
               }
 
               if (
