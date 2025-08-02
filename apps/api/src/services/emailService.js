@@ -389,7 +389,7 @@ export const sendModelFailureNotification = async (modelLog, Model, AgentLog, Ag
       if (evaluations && evaluations.length > 0) {
         for (const evaluation of evaluations) {
           if (evaluation.evaluator && !evaluation.isInformative) {
-            reviewerSummary += " • " + evaluation.evaluator.name + ": " + evaluation.analysis + "\n";
+            reviewerSummary += " • " + evaluation.evaluator + ": " + evaluation.analysis + "\n";
           }
         }
       }
