@@ -128,12 +128,13 @@ export const singleEvaluate = async (entry, evaluator, prompts = [], isN8N = fal
   let parsedOutput;
 
   parsedOutput = parseEvaluatorsOutput(evaluation);
+  const status = isCorrect({ actual: parsedOutput }) ? 'success' : 'error';
 
   await updateModelLog(entry, {
     actual: parsedOutput,
     autoEvaluationProcessed: true,
     processed: true,
-    status: isCorrect({ actual: parsedOutput }) ? 'success' : 'error',
+    status: status,
   });
 
   for (const ev of evaluation) {
@@ -150,7 +151,7 @@ export const singleEvaluate = async (entry, evaluator, prompts = [], isN8N = fal
     });
   }
 
-  return { entry, evaluation };
+  return { entry, evaluation, status };
 };
 
 export const evaluateSamples = async (
