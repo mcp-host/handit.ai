@@ -635,65 +635,6 @@ export default (sequelize, DataTypes) => {
                   status = currentStatus;
                 }
               }
-              const abTestModels = await model.getABTestModels();
-
-              for (let i = 0; i < abTestModels.length; i++) {
-                const randomNumberFrom0To100 = Math.floor(Math.random() * 101);
-                const abTest = abTestModels[i].abTest;
-                if (randomNumberFrom0To100 <= abTest.percentage) {
-                  await evaluateAB(
-                    modelLog,
-                    abTestModels[i],
-                    sequelize.models.ModelLog,
-                    modelLog.id,
-                    sequelize.models,
-                    company
-                  );
-                }
-              }
-
-              const output = modelLog.output;
-              const hasError = outputContainsError(output);
-              let errorMessage = '';
-
-              if (hasError) {
-                errorMessage = detectErrorMessage(output);
-              }
-              const modelMetric = await sequelize.models.ModelMetric.findOne({
-                where: {
-                  modelId: modelLog.modelId,
-                  type: 'health_check',
-                },
-              });
-
-              if (!modelMetric) {
-                return;
-              }
-
-              const lastModelMetricLog =
-                await modelMetric.getLastModelMetricLogs(1);
-
-              if (hasError) {
-                await modelMetric.createModelMetricLog({
-                  value: 0,
-                  description: errorMessage,
-                  label: 'health_check',
-                });
-              } else {
-                const lastModelMetricLogValue = lastModelMetricLog[0]?.value;
-
-                if (
-                  lastModelMetricLog.length === 0 ||
-                  lastModelMetricLogValue === 0
-                ) {
-                  await modelMetric.createModelMetricLog({
-                    value: 1,
-                    description: 'Model health check passed',
-                    label: 'health_check',
-                  });
-                }
-              }
-
               const random = Math.floor(Math.random() * 101);
               if (random <= 20 && status === 'error') {
                 await model.generateInsights();
@@ -919,6 +860,66 @@ export default (sequelize, DataTypes) => {
                   }
                 }
               }
+              const abTestModels = await model.getABTestModels();
+
+              for (let i = 0; i < abTestModels.length; i++) {
+                const randomNumberFrom0To100 = Math.floor(Math.random() * 101);
+                const abTest = abTestModels[i].abTest;
+                if (randomNumberFrom0To100 <= abTest.percentage) {
+                  await evaluateAB(
+                    modelLog,
+                    abTestModels[i],
+                    sequelize.models.ModelLog,
+                    modelLog.id,
+                    sequelize.models,
+                    company
+                  );
+                }
+              }
+
+              const output = modelLog.output;
+              const hasError = outputContainsError(output);
+              let errorMessage = '';
+
+              if (hasError) {
+                errorMessage = detectErrorMessage(output);
+              }
+              const modelMetric = await sequelize.models.ModelMetric.findOne({
+                where: {
+                  modelId: modelLog.modelId,
+                  type: 'health_check',
+                },
+              });
+
+              if (!modelMetric) {
+                return;
+              }
+
+              const lastModelMetricLog =
+                await modelMetric.getLastModelMetricLogs(1);
+
+              if (hasError) {
+                await modelMetric.createModelMetricLog({
+                  value: 0,
+                  description: errorMessage,
+                  label: 'health_check',
+                });
+              } else {
+                const lastModelMetricLogValue = lastModelMetricLog[0]?.value;
+
+                if (
+                  lastModelMetricLog.length === 0 ||
+                  lastModelMetricLogValue === 0
+                ) {
+                  await modelMetric.createModelMetricLog({
+                    value: 1,
+                    description: 'Model health check passed',
+                    label: 'health_check',
+                  });
+                }
+              }
+
+              
               if (
                 !model.isReviewer &&
                 !model.isOptimized &&
