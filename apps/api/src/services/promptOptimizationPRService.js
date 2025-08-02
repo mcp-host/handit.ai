@@ -1209,13 +1209,13 @@ const generatePRDescription = async (agent, originalPrompt, optimizedPrompt, met
   let evaluationSection = '';
   if (modelLog && modelLog.actual && modelLog.actual.evaluations) {
     const evaluations = modelLog.actual.evaluations;
-    const failedEvaluations = evaluations.filter(eval => 
-      eval.result === false || eval.score < 0.7 || eval.status === 'failed'
+    const failedEvaluations = evaluations.filter(evaluation => 
+      evaluation.result === false || evaluation.score < 0.7 || evaluation.status === 'failed'
     );
 
     if (failedEvaluations.length > 0) {
       evaluationSection = `**Issues Identified**:
-${failedEvaluations.map(eval => `- ${eval.reason || eval.feedback || `${eval.name} flagged performance issues`}`).join('\n')}
+${failedEvaluations.map(evaluation => `- ${evaluation.reason || evaluation.feedback || `${evaluation.name} flagged performance issues`}`).join('\n')}
 
 ## 🧪 Evaluation Findings
 
