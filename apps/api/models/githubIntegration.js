@@ -17,6 +17,90 @@ export default (sequelize, DataTypes) => {
     }
 
     /**
+     * Refresh the access token using the refresh token
+     * @returns {Promise<boolean>} True if refresh was successful, false otherwise
+     */
+    async refreshAccessToken() {
+      if (!this.refreshToken) {
+        console.error('No refresh token available for GitHub integration');
+        return false;
+      }
+
+      try {
+        console.log('Refreshing GitHub access token...');
+        
+        const response = await fetch('https://github.com/login/oauth/access_token', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            client_id: process.env.GITHUB_CLIENT_ID,
+            client_secret: process.env.GITHUB_CLIENT_SECRET,
+            refresh_token: this.refreshToken,
+            grant_type: 'refresh_token',
+          }),
+        });
+
+        if (!response.ok) {
+          console.error('Failed to refresh GitHub token:', response.status, response.statusText);
+          return false;
+        }
+
+        const data = await response.json();
+
+        if (data.error) {
+          console.error('GitHub token refresh error:', data.error_description || data.error);
+          return false;
+        }
+
+        // Update the token information
+        this.accessToken = data.access_token;
+        this.refreshToken = data.refresh_token || this.refreshToken; // Keep existing if new one not provided
+        
+        // Set expiration time (GitHub tokens typically expire in 8 hours)
+        if (data.expires_in) {
+          this.expiresAt = new Date(Date.now() + (data.expires_in * 1000));
+        } else {
+          // Default to 8 hours if not specified
+          this.expiresAt = new Date(Date.now() + (8 * 60 * 60 * 1000));
+        }
+
+        // Save the updated token information
+        await this.save();
+
+        console.log('GitHub access token refreshed successfully');
+        return true;
+
+      } catch (error) {
+        console.error('Error refreshing GitHub access token:', error);
+        return false;
+      }
+    }
+
+    /**
+     * Get a valid access token, refreshing it if necessary
+     * @returns {Promise<string|null>} Valid access token or null if refresh failed
+     */
+    async getValidAccessToken() {
+      // If token is not expired, return it as is
+      if (!this.isTokenExpired()) {
+        return this.accessToken;
+      }
+
+      // Token is expired, try to refresh it
+      const refreshSuccess = await this.refreshAccessToken();
+      
+      if (refreshSuccess) {
+        return this.accessToken;
+      }
+
+      console.error('Unable to get valid access token for GitHub integration');
+      return null;
+    }
+
+    /**
      * Get repository full name
      */
     getRepositoryFullName() {

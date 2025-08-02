@@ -80,13 +80,14 @@ export const createPromptOptimizationPR = async ({
       return { success: false, error: 'No GitHub integration found' };
     }
 
-    // Check if token is expired
-    if (githubIntegration.isTokenExpired()) {
-      console.log(`❌ GitHub token expired for company ${company.name}`);
-      return { success: false, error: 'GitHub token expired' };
+    // Step 2: Get valid access token (refresh if needed)
+    const validAccessToken = await githubIntegration.getValidAccessToken();
+    if (!validAccessToken) {
+      console.log(`❌ Unable to get valid GitHub token for company ${company.name}`);
+      return { success: false, error: 'Unable to refresh GitHub token' };
     }
 
-    // Step 2: Parse repository information
+    // Step 3: Parse repository information
     const repositoryUrl = agent.repository;
     if (!repositoryUrl) {
       console.log(`❌ No repository URL found for agent ${agent.name}`);
@@ -99,8 +100,8 @@ export const createPromptOptimizationPR = async ({
       return { success: false, error: 'Invalid repository URL format' };
     }
 
-    // Step 3: Initialize GitHub client
-    const githubClient = new GitHubClient(githubIntegration.accessToken);
+    // Step 4: Initialize GitHub client with valid token
+    const githubClient = new GitHubClient(validAccessToken);
 
     // Verify token permissions
     const tokenVerification = await githubClient.verifyTokenPermissions();
@@ -113,7 +114,7 @@ export const createPromptOptimizationPR = async ({
     // Skip permission test for now - GitHub Apps have different permission model
     console.log(`⚠️  Skipping permission test - proceeding with GitHub App token`);
 
-    // Step 4: Search for the original prompt in the repository
+    // Step 5: Search for the original prompt in the repository
     console.log(`🔍 Searching for original prompt in repository ${repoInfo.owner}/${repoInfo.repo}`);
     const promptLocations = await searchPromptInRepository(
       githubClient,
@@ -129,7 +130,7 @@ export const createPromptOptimizationPR = async ({
 
     console.log(`✅ Found ${promptLocations.length} potential prompt location(s)`);
 
-    // Step 5: Filter real prompt locations using AI if multiple found
+    // Step 6: Filter real prompt locations using AI if multiple found
     let validPromptLocations = promptLocations;
     if (promptLocations.length > 1) {
       console.log(`🤖 Using AI to filter real prompt locations from ${promptLocations.length} candidates`);
@@ -143,7 +144,7 @@ export const createPromptOptimizationPR = async ({
 
     console.log(`✅ Identified ${validPromptLocations.length} valid prompt location(s)`);
 
-    // Step 6: Generate new code with optimized prompt
+    // Step 7: Generate new code with optimized prompt
     const codeReplacements = await generateCodeReplacements(
       validPromptLocations,
       originalPrompt,
@@ -152,7 +153,7 @@ export const createPromptOptimizationPR = async ({
 
     console.log(codeReplacements);
 
-    // Step 7: Create new branch and apply changes
+    // Step 8: Create new branch and apply changes
     const branchName = `prompt-optimization-${Date.now()}`;
     const defaultBranch = await getDefaultBranch(githubClient, repoInfo.owner, repoInfo.repo);
     
@@ -188,7 +189,7 @@ export const createPromptOptimizationPR = async ({
       throw branchError;
     }
 
-    // Step 8: Apply code changes to the new branch
+    // Step 9: Apply code changes to the new branch
     for (const replacement of codeReplacements) {
       console.log(`📝 Updating file: ${replacement.filePath}`);
       const accuracyImprovement = metrics.accuracy_improvement || metrics.improvement || 0;
@@ -205,7 +206,7 @@ export const createPromptOptimizationPR = async ({
       );
     }
 
-    // Step 9: Create Pull Request
+    // Step 10: Create Pull Request
     const accuracyImprovement = metrics.accuracy_improvement || metrics.improvement || 0;
     const prTitle = `🔁 Auto-optimized prompt for "${agent.name}" — +${formatPercentage(accuracyImprovement)} accuracy improvement`;
     const prBody = generatePRDescription(agent, originalPrompt, optimizedPrompt, metrics, validPromptLocations);
@@ -220,7 +221,7 @@ export const createPromptOptimizationPR = async ({
       prBody
     );
 
-    // Step 10: Add detailed comment with metrics
+    // Step 11: Add detailed comment with metrics
     const metricsComment = generateMetricsComment(metrics, validPromptLocations);
     await githubClient.createComment(
       repoInfo.owner,
@@ -229,7 +230,7 @@ export const createPromptOptimizationPR = async ({
       metricsComment
     );
 
-    // Step 11: Record PR in database
+    // Step 12: Record PR in database
     await models.GitHubPullRequest.create({
       githubIntegrationId: githubIntegration.id,
       modelId: agent.id, // Using agent ID as model reference
