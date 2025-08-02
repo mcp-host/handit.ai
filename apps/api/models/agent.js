@@ -124,7 +124,14 @@ export default (sequelize, DataTypes) => {
       defaultValue: false,
       field: 'tour_agent',
       comment: 'Flag to indicate if agent is a tour/demo agent for onboarding'
-    }
+    },
+    demoAgent: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: 'demo_agent',
+      comment: 'Flag to indicate if agent is a demo agent for testing'
+    },
   }, {
     sequelize,
     modelName: 'Agent',

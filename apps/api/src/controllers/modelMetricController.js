@@ -51,7 +51,7 @@ export const getComparisonMetricsLastMonth = async (req, res) => {
   const agent = await db.Agent.findOne({
     where: { id: agentNodes[0]?.agentId },
   });
-  if (company.testMode || agent?.tourAgent) {
+  if (company.testMode || agent?.tourAgent || agent?.demoAgent) {
     return res.status(200).json(generateMockComparisonMetrics());
   }
 

@@ -595,7 +595,7 @@ export const getAgentMetrics = async (req, res) => {
     const agent = await db.Agent.findOne({
       where: { id: req.params.id },
     });
-    if (company.testMode || agent.tourAgent) {
+    if (company.testMode || agent.tourAgent || agent.demoAgent) {
       const data = await generateMockDetailedMetrics(req.params.id);
       return res.status(200).json(data);
     }
@@ -723,7 +723,7 @@ export const getAgentComparisonMetricsLastMonthAgent = async (req, res) => {
     const agent = await db.Agent.findOne({
       where: { id: req.params.id },
     });
-    if (company.testMode || agent.tourAgent) {
+    if (company.testMode || agent.tourAgent || agent.demoAgent) {
       return res.status(200).json(generateMockToolComparisonMetrics());
     }
 
@@ -902,7 +902,7 @@ export const getAgentToolComparisonMetricsLastMonthAgent = async (req, res) => {
     const agent = await db.Agent.findOne({
       where: { id: req.params.id },
     });
-    if (company.testMode || agent.tourAgent) {
+    if (company.testMode || agent.tourAgent || agent.demoAgent) {
       return res.status(200).json(generateMockToolComparisonMetrics());
     }
     // Get agent and verify access
