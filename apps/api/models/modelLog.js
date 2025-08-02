@@ -85,7 +85,11 @@ const calculateModelMetricsForPR = async (model, models) => {
 
     // Calculate averages for each metric type
     for (const modelMetric of modelMetrics) {
-      const metricName = modelMetric.type;
+      if (modelMetric.type === 'function') {
+        continue;
+      }
+
+      const metricName = modelMetric.name;
       
       // Check if we have an accuracy metric
       if (metricName.toLowerCase() === 'accuracy') {

@@ -980,19 +980,30 @@ const generateMetricsTable = (metrics) => {
     const beforeValue = pair.beforeValue;
     const afterValue = pair.afterValue;
     
-    if (beforeValue !== undefined && afterValue !== undefined) {
-      const format = determineFormat(beforeValue, afterValue);
+    if (beforeValue !== undefined && afterValue !== undefined && 
+        beforeValue !== null && afterValue !== null) {
+      
+      // Ensure values are numbers
+      const beforeNum = Number(beforeValue);
+      const afterNum = Number(afterValue);
+      
+      // Skip if values are not valid numbers
+      if (isNaN(beforeNum) || isNaN(afterNum)) {
+        continue;
+      }
+      
+      const format = determineFormat(beforeNum, afterNum);
       const isError = isErrorMetric(metricName);
       
       const beforeFormatted = format === 'percentage' 
-        ? formatPercentage(beforeValue) 
-        : beforeValue.toFixed(2);
+        ? formatPercentage(beforeNum) 
+        : beforeNum.toFixed(2);
         
       const afterFormatted = format === 'percentage' 
-        ? formatPercentage(afterValue) 
-        : afterValue.toFixed(2);
+        ? formatPercentage(afterNum) 
+        : afterNum.toFixed(2);
       
-      const change = afterValue - beforeValue;
+      const change = afterNum - beforeNum;
       const changeFormatted = format === 'percentage' 
         ? formatPercentage(Math.abs(change)) 
         : Math.abs(change).toFixed(2);
@@ -1010,8 +1021,8 @@ const generateMetricsTable = (metrics) => {
 
   if (rows.length === 0) {
     // Fallback if no metrics pairs are available
-    const improvement = metrics.improvement || metrics.accuracy_improvement || 0;
-    const accuracy = metrics.accuracy_after || metrics.accuracy || 0.90;
+    const improvement = Number(metrics.improvement || metrics.accuracy_improvement || 0);
+    const accuracy = Number(metrics.accuracy_after || metrics.accuracy || 0.90);
     const beforeAccuracy = accuracy - improvement;
     
     rows.push(`| Accuracy | ${formatPercentage(beforeAccuracy)} | ${formatPercentage(accuracy)} | 🔼 +${formatPercentage(improvement)} |`);
@@ -1156,7 +1167,9 @@ ${locations.map(loc => `
  * @returns {string} Formatted percentage
  */
 const formatPercentage = (value) => {
-  return `${Math.round(value * 100)}%`;
+  const numValue = Number(value);
+  if (isNaN(numValue)) return '0%';
+  return `${Math.round(numValue * 100)}%`;
 };
 
 /**
