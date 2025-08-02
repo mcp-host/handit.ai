@@ -625,7 +625,7 @@ export default (sequelize, DataTypes) => {
                 }
 
                 if (evaluators.length > 0) {
-                  const { currentStatus } = await singleEvaluate(
+                  const { status: currentStatus } = await singleEvaluate(
                     modelLog,
                     reviewerInstance,
                     evaluators,
