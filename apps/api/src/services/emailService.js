@@ -375,12 +375,26 @@ export const sendModelFailureNotification = async (modelLog, Model, AgentLog, Ag
     }
 
     // Prepare the reviewer summary
-    let reviewerSummary = "The model evaluation failed.";
+    let reviewerSummary = null;
     if (modelLog.actual && modelLog.actual.summary) {
       reviewerSummary = modelLog.actual.summary;
     } else if (modelLog.actual && modelLog.actual.reviewerSummary) {
       reviewerSummary = modelLog.actual.reviewerSummary;
     }
+
+    if (!reviewerSummary) {
+      reviewerSummary = ""
+
+      const evaluations = modelLog.actual?.evaluations;
+      if (evaluations && evaluations.length > 0) {
+        for (const evaluation of evaluations) {
+          if (evaluation.evaluator && !evaluation.isInformative) {
+            reviewerSummary += " • " + evaluation.evaluator.name + ": " + evaluation.analysis + "\n";
+          }
+        }
+      }
+    }
+    
 
     // Send the email to all users of the company
     await sendModelReviewFailureEmailsToCompany({
