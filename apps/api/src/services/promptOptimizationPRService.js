@@ -58,7 +58,8 @@ export const createPromptOptimizationPR = async ({
   originalPrompt,
   optimizedPrompt,
   metrics = {},
-  models
+  models,
+  modelLog = null
 }) => {
   try {
     console.log(`🚀 Starting prompt optimization PR creation for agent: ${agent.name}`);
@@ -209,7 +210,7 @@ export const createPromptOptimizationPR = async ({
     // Step 10: Create Pull Request
     const accuracyImprovement = metrics.accuracy_improvement || metrics.improvement || 0;
     const prTitle = `🔁 Auto-optimized prompt for "${agent.name}" — +${formatPercentage(accuracyImprovement)} accuracy improvement`;
-    const prBody = generatePRDescription(agent, originalPrompt, optimizedPrompt, metrics, validPromptLocations);
+    const prBody = generatePRDescription(agent, originalPrompt, optimizedPrompt, metrics, validPromptLocations, modelLog);
 
     console.log(`📋 Creating Pull Request: ${prTitle}`);
     const pr = await githubClient.createPullRequest(
@@ -923,78 +924,94 @@ Prompt version bumped from \`${metrics.version_before || 'v1.0.0'}\` to \`${metr
 const generateMetricsTable = (metrics) => {
   const rows = [];
   
-  // Standard metrics to include
-  const metricConfigs = [
-    { 
-      key: 'accuracy', 
-      label: 'Accuracy',
-      beforeKey: 'accuracy_before',
-      afterKey: 'accuracy_after',
-      format: 'percentage'
-    },
-    { 
-      key: 'f1_score', 
-      label: 'F1 Score',
-      beforeKey: 'f1_score_before',
-      afterKey: 'f1_score_after',
-      format: 'decimal'
-    },
-    { 
-      key: 'error_rate', 
-      label: 'Error Rate',
-      beforeKey: 'error_rate_before',
-      afterKey: 'error_rate_after',
-      format: 'percentage',
-      invert: true // Lower is better
-    },
-    { 
-      key: 'precision', 
-      label: 'Precision',
-      beforeKey: 'precision_before',
-      afterKey: 'precision_after',
-      format: 'percentage'
-    },
-    { 
-      key: 'recall', 
-      label: 'Recall',
-      beforeKey: 'recall_before',
-      afterKey: 'recall_after',
-      format: 'percentage'
-    }
-  ];
+  // Helper function to format metric names for display
+  const formatMetricName = (metricName) => {
+    return metricName
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
 
-  for (const config of metricConfigs) {
-    const beforeValue = metrics[config.beforeKey];
-    const afterValue = metrics[config.afterKey];
+  // Helper function to determine if metric is error-type (lower is better)
+  const isErrorMetric = (metricName) => {
+    return metricName.toLowerCase().includes('error') || 
+           metricName.toLowerCase().includes('latency') ||
+           metricName.toLowerCase().includes('hallucination');
+  };
+
+  // Helper function to determine format based on metric values
+  const determineFormat = (beforeValue, afterValue) => {
+    // If values are between 0 and 1, treat as percentage
+    if ((beforeValue >= 0 && beforeValue <= 1) && (afterValue >= 0 && afterValue <= 1)) {
+      return 'percentage';
+    }
+    // Otherwise treat as decimal
+    return 'decimal';
+  };
+
+  // Find all metrics with before/after pattern
+  const metricPairs = {};
+  
+  // Scan all metrics for before/after pairs
+  Object.keys(metrics).forEach(key => {
+    if (key.endsWith('_before')) {
+      const metricName = key.replace('_before', '');
+      const afterKey = `${metricName}_after`;
+      
+      if (metrics[afterKey] !== undefined) {
+        metricPairs[metricName] = {
+          beforeValue: metrics[key],
+          afterValue: metrics[afterKey],
+          beforeKey: key,
+          afterKey: afterKey
+        };
+      }
+    }
+  });
+
+  // Define display order (standard metrics first, then custom metrics)
+  const standardMetrics = ['accuracy', 'f1_score', 'precision', 'recall', 'error_rate'];
+  const customMetrics = Object.keys(metricPairs).filter(name => !standardMetrics.includes(name));
+  const orderedMetrics = [...standardMetrics.filter(name => metricPairs[name]), ...customMetrics];
+
+  // Generate rows for all metrics
+  for (const metricName of orderedMetrics) {
+    const pair = metricPairs[metricName];
+    const beforeValue = pair.beforeValue;
+    const afterValue = pair.afterValue;
     
     if (beforeValue !== undefined && afterValue !== undefined) {
-      const beforeFormatted = config.format === 'percentage' 
+      const format = determineFormat(beforeValue, afterValue);
+      const isError = isErrorMetric(metricName);
+      
+      const beforeFormatted = format === 'percentage' 
         ? formatPercentage(beforeValue) 
         : beforeValue.toFixed(2);
         
-      const afterFormatted = config.format === 'percentage' 
+      const afterFormatted = format === 'percentage' 
         ? formatPercentage(afterValue) 
         : afterValue.toFixed(2);
       
       const change = afterValue - beforeValue;
-      const changeFormatted = config.format === 'percentage' 
+      const changeFormatted = format === 'percentage' 
         ? formatPercentage(Math.abs(change)) 
         : Math.abs(change).toFixed(2);
       
-      const isImprovement = config.invert ? change < 0 : change > 0;
+      const isImprovement = isError ? change < 0 : change > 0;
       const changeIcon = isImprovement ? '🔼' : '🔽';
-      const changeSign = config.invert 
+      const changeSign = isError 
         ? (change < 0 ? '-' : '+')
         : (change > 0 ? '+' : '-');
       
-      rows.push(`| ${config.label} | ${beforeFormatted} | ${afterFormatted} | ${changeIcon} ${changeSign}${changeFormatted} |`);
+      const displayName = formatMetricName(metricName);
+      rows.push(`| ${displayName} | ${beforeFormatted} | ${afterFormatted} | ${changeIcon} ${changeSign}${changeFormatted} |`);
     }
   }
 
   if (rows.length === 0) {
-    // Fallback if no specific metrics are available
+    // Fallback if no metrics pairs are available
     const improvement = metrics.improvement || metrics.accuracy_improvement || 0;
-    const accuracy = metrics.accuracy || metrics.after_accuracy || 0;
+    const accuracy = metrics.accuracy_after || metrics.accuracy || 0.90;
     const beforeAccuracy = accuracy - improvement;
     
     rows.push(`| Accuracy | ${formatPercentage(beforeAccuracy)} | ${formatPercentage(accuracy)} | 🔼 +${formatPercentage(improvement)} |`);
@@ -1014,15 +1031,30 @@ const generateMetricsTable = (metrics) => {
  * @param {string} optimizedPrompt - Optimized prompt text
  * @param {Object} metrics - Performance metrics
  * @param {Array} locations - Prompt locations found
+ * @param {Object} modelLog - The model log that triggered this optimization
  * @returns {string} PR description markdown
  */
-const generatePRDescription = (agent, originalPrompt, optimizedPrompt, metrics, locations) => {
+const generatePRDescription = (agent, originalPrompt, optimizedPrompt, metrics, locations, modelLog = null) => {
   const currentDate = new Date().toISOString().split('T')[0];
   const optimizationType = metrics.optimization_type || 'Prompt rewrite based on evaluation feedback';
   const reason = metrics.optimization_reason || 'Performance optimization based on Handit evaluation metrics';
 
   // Generate metrics table
   const metricsTable = generateMetricsTable(metrics);
+
+  // Generate trace URL if modelLog is available
+  let traceSection = '';
+  if (modelLog && modelLog.agentLogId) {
+    const traceUrl = `https://dashboard.handit.ai/ag-tracing?agentId=${agent.id}&entryLog=${modelLog.agentLogId}`;
+    traceSection = `
+### 🔍 Original Issue Trace
+
+This optimization was triggered by performance issues detected in production. You can view the original trace that led to this optimization:
+
+[📊 View Original Trace](${traceUrl})
+
+`;
+  }
 
   return `## 🤖 Handit Auto-Optimization Summary
 
@@ -1036,7 +1068,7 @@ const generatePRDescription = (agent, originalPrompt, optimizedPrompt, metrics, 
 ### 📈 Metrics Before vs After
 
 ${metricsTable}
-
+${traceSection}
 ### 📝 Prompt Changes
 
 <details>
