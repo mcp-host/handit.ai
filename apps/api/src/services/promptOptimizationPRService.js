@@ -223,13 +223,13 @@ export const createPromptOptimizationPR = async ({
     );
 
     // Step 11: Add detailed comment with metrics
-    const metricsComment = generateMetricsComment(metrics, validPromptLocations);
+    /*const metricsComment = generateMetricsComment(metrics, validPromptLocations);
     await githubClient.createComment(
       repoInfo.owner,
       repoInfo.repo,
       pr.number,
       metricsComment
-    );
+    );*/
 
     // Step 12: Record PR in database
     await models.GitHubPullRequest.create({
