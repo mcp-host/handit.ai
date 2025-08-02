@@ -159,7 +159,7 @@ class GitHubClient {
         return { items: [] };
       }
       
-      const searchQuery = `${query} repo:${owner}/${repo}`;
+      const searchQuery = `repo:${owner}/${repo} ${query}`;
       
       // GitHub search API has rate limits and specific requirements
       // Wait a bit to avoid rate limiting

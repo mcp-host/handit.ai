@@ -400,6 +400,12 @@ const generateSearchStrategies = (originalPrompt) => {
     confidence: 1.0
   });
 
+  strategies.push({
+    name: 'first_100_chars',
+    query: escapeForSearch(prompt.substring(0, 100)),
+    confidence: 1.0
+  });
+
   // Strategy 2: First half of prompt
   const firstHalf = prompt.substring(0, Math.floor(prompt.length / 2));
   if (firstHalf.length > 20) {
@@ -462,14 +468,6 @@ const generateSearchStrategies = (originalPrompt) => {
   const divideAndConquerStrategies = generateDivideAndConquerStrategies(prompt);
   strategies.push(...divideAndConquerStrategies);
 
-  // Strategy 8: Word-based combinations (meaningful word groups)
-  const wordStrategies = generateWordBasedStrategies(prompt);
-  strategies.push(...wordStrategies);
-
-  // Strategy 9: Overlapping windows
-  const windowStrategies = generateOverlappingWindowStrategies(prompt);
-  strategies.push(...windowStrategies);
-
   return strategies;
 };
 
@@ -483,7 +481,7 @@ const generateSearchStrategies = (originalPrompt) => {
  */
 const generateDivideAndConquerStrategies = (text, depth = 0, prefix = 'divide') => {
   const strategies = [];
-  const maxDepth = 5; // Prevent infinite recursion
+  const maxDepth = 3; // Prevent infinite recursion
   const minWords = 3;
   
   if (depth >= maxDepth) return strategies;
