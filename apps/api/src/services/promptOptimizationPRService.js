@@ -22,9 +22,7 @@
 import GitHubClient from './githubClient.js';
 import { generateAIResponse } from './aiService.js';
 import { z } from 'zod';
-import db from '../../models/index.js';
 
-const { models } = db;
 
 /**
  * Schema for prompt location analysis results
@@ -216,7 +214,7 @@ export const createPromptOptimizationPR = async ({
     // Step 10: Create Pull Request
     const accuracyImprovement = metrics.accuracy_improvement || metrics.improvement || 0;
     const prTitle = `Prompt improved by Handit’s autonomous engine in the node ${agentNode.name} of ${agent.name}`;
-    const prBody = await generatePRDescription(agent, originalPrompt, optimizedPrompt, metrics, validPromptLocations, modelLog);
+    const prBody = await generatePRDescription(agent, originalPrompt, optimizedPrompt, metrics, validPromptLocations, modelLog, models);
 
     console.log(`📋 Creating Pull Request: ${prTitle}`);
     const pr = await githubClient.createPullRequest(
@@ -1173,7 +1171,7 @@ const generateOptimizedMetricsTable = (metrics) => {
  * @param {Object} modelLog - The model log that triggered this optimization
  * @returns {string} PR description markdown
  */
-const generatePRDescription = async (agent, originalPrompt, optimizedPrompt, metrics, locations, modelLog = null) => {
+const generatePRDescription = async (agent, originalPrompt, optimizedPrompt, metrics, locations, modelLog = null, models) => {
   const currentDate = new Date().toISOString().split('T')[0];
 
   // Get agent node name if available
