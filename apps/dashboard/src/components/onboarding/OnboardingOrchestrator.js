@@ -242,19 +242,21 @@ const OnboardingOrchestrator = ({
               }
 
               const restoredStep = onboardingService.getCurrentStep();
-              if (restoredStep) {
-                setCurrentStep(restoredStep);
-                setTourInfo(onboardingService.getCurrentTourInfo());
-                setIsActive(true);
-                setAssistantVisible(state.assistantVisible);
+              if (restoredStep.id === 'welcome-banner') {
+                if (restoredStep) {
+                  setCurrentStep(restoredStep);
+                  setTourInfo(onboardingService.getCurrentTourInfo());
+                  setIsActive(true);
+                  setAssistantVisible(state.assistantVisible);
 
-                // Set global flag
-                window.__onboardingActive = true;
-                window.dispatchEvent(
-                  new CustomEvent('onboardingStateChange', {
-                    detail: { active: true },
-                  })
-                );
+                  // Set global flag
+                  window.__onboardingActive = true;
+                  window.dispatchEvent(
+                    new CustomEvent('onboardingStateChange', {
+                      detail: { active: true },
+                    })
+                  );
+                }
               }
             }
           }, 500); // Small delay to ensure DOM is ready
