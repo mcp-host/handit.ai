@@ -276,7 +276,7 @@ export default (sequelize, DataTypes) => {
      * Get a valid installation access token for this integration
      * @returns {Promise<string|null>} Valid installation access token or null if failed
      */
-    async getInstallationAccessToken() {
+    async getInstallationAccessToken(repositories) {
       if (!this.githubAppInstallationId) {
         console.error('No GitHub App installation ID found for this integration');
         return null;
@@ -287,7 +287,7 @@ export default (sequelize, DataTypes) => {
         const tokenResponse = await GitHubIntegration.createInstallationAccessToken(
           this.githubAppInstallationId,
           {
-            repositories: [this.repositoryName], // Grant access only to the specific repository
+            repositories, // Grant access only to the specific repository
             permissions: {
               contents: 'write',     // Read and write repository contents
               pull_requests: 'write', // Create and manage pull requests

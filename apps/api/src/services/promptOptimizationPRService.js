@@ -88,7 +88,11 @@ export const createPromptOptimizationPR = async ({
       return { success: false, error: 'GitHub integration missing installation ID' };
     }
 
-    const validAccessToken = await githubIntegration.getInstallationAccessToken();
+    const validAccessToken = await githubIntegration.getInstallationAccessToken(
+      [
+        agent.repository
+      ]
+    );
     if (!validAccessToken) {
       console.log(`❌ Unable to get GitHub App installation token for company ${company.name}`);
       return { success: false, error: 'Unable to create GitHub App installation token' };
