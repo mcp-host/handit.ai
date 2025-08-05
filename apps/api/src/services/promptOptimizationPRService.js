@@ -87,10 +87,17 @@ export const createPromptOptimizationPR = async ({
       console.log(`❌ GitHub integration not properly configured for company ${company.name}`);
       return { success: false, error: 'GitHub integration missing installation ID' };
     }
-
+    let repository = agent.repository;
+    if (!repository) {
+      console.log(`❌ No repository URL found for agent ${agent.name}`);
+      return { success: false, error: 'No repository URL configured for agent' };
+    }
+    const repositoryParts = repository.split('/');
+    repository = repositoryParts[repositoryParts.length - 1].replace('.git', '');
+    console.log(`🔍 Getting GitHub App installation access token for repository: ${repository}`);
     const validAccessToken = await githubIntegration.getInstallationAccessToken(
       [
-        agent.repository
+        repository
       ]
     );
     if (!validAccessToken) {
