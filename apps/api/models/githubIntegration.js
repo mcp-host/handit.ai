@@ -310,10 +310,7 @@ export default (sequelize, DataTypes) => {
     isConfigured() {
       return !!(
         this.githubAppInstallationId &&
-        this.repositoryOwner &&
-        this.repositoryName &&
-        this.promptFilePath &&
-        this.active
+        this.repositoryOwner
       );
     }
   }
