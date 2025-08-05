@@ -82,11 +82,16 @@ export const createPromptOptimizationPR = async ({
       return { success: false, error: 'No GitHub integration found' };
     }
 
-    // Step 2: Get valid access token (refresh if needed)
-    const validAccessToken = await githubIntegration.getValidAccessToken();
+    // Step 2: Get GitHub App installation access token
+    if (!githubIntegration.isConfigured()) {
+      console.log(`❌ GitHub integration not properly configured for company ${company.name}`);
+      return { success: false, error: 'GitHub integration missing installation ID' };
+    }
+
+    const validAccessToken = await githubIntegration.getInstallationAccessToken();
     if (!validAccessToken) {
-      console.log(`❌ Unable to get valid GitHub token for company ${company.name}`);
-      return { success: false, error: 'Unable to refresh GitHub token' };
+      console.log(`❌ Unable to get GitHub App installation token for company ${company.name}`);
+      return { success: false, error: 'Unable to create GitHub App installation token' };
     }
 
     // Step 3: Parse repository information
@@ -111,10 +116,10 @@ export const createPromptOptimizationPR = async ({
       console.log(`❌ GitHub token verification failed: ${tokenVerification.error}`);
       return { success: false, error: 'GitHub token authentication failed' };
     }
-    console.log(`✅ GitHub token verified for user: ${tokenVerification.user}`);
+    console.log(`✅ GitHub App installation token verified for user: ${tokenVerification.user}`);
 
-    // Skip permission test for now - GitHub Apps have different permission model
-    console.log(`⚠️  Skipping permission test - proceeding with GitHub App token`);
+    // GitHub App installation tokens have scoped permissions - no need for additional permission test
+    console.log(`✅ Using GitHub App installation token with scoped repository permissions`);
 
     // Step 5: Search for the original prompt in the repository
     console.log(`🔍 Searching for original prompt in repository ${repoInfo.owner}/${repoInfo.repo}`);

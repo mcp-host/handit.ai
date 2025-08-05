@@ -1,6 +1,7 @@
 'use strict';
 import { Model } from 'sequelize';
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 
 export default (sequelize, DataTypes) => {
   class GitHubIntegration extends Model {
@@ -192,11 +193,123 @@ export default (sequelize, DataTypes) => {
     }
 
     /**
+     * Generate a JWT token for GitHub App authentication
+     * @returns {string} JWT token for GitHub App
+     */
+    static generateJWT() {
+      const appId = process.env.GITHUB_APP_ID;
+      const privateKey = process.env.GITHUB_APP_PRIVATE_KEY;
+      
+      if (!appId || !privateKey) {
+        throw new Error('GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY environment variables are required');
+      }
+
+      // Format the private key (handle both raw and base64 encoded keys)
+      let formattedPrivateKey = privateKey;
+      if (!privateKey.includes('-----BEGIN')) {
+        // If it's base64 encoded, decode it
+        formattedPrivateKey = Buffer.from(privateKey, 'base64').toString('utf8');
+      }
+
+      // JWT payload
+      const payload = {
+        iat: Math.floor(Date.now() / 1000) - 60, // Issued at time (60 seconds ago to account for clock skew)
+        exp: Math.floor(Date.now() / 1000) + (10 * 60), // Expires in 10 minutes
+        iss: parseInt(appId) // GitHub App ID
+      };
+
+      // Generate JWT
+      return jwt.sign(payload, formattedPrivateKey, { algorithm: 'RS256' });
+    }
+
+    /**
+     * Create an installation access token using JWT
+     * @param {number} installationId - The GitHub App installation ID
+     * @param {Object} options - Optional parameters
+     * @param {Array<string>} options.repositories - Specific repositories to grant access to
+     * @param {Object} options.permissions - Specific permissions to grant
+     * @returns {Promise<Object>} Installation access token response
+     */
+    static async createInstallationAccessToken(installationId, options = {}) {
+      const jwtToken = this.generateJWT();
+      
+      const requestBody = {};
+      if (options.repositories) {
+        requestBody.repositories = options.repositories;
+      }
+      if (options.permissions) {
+        requestBody.permissions = options.permissions;
+      }
+
+      try {
+        const response = await fetch(`https://api.github.com/app/installations/${installationId}/access_tokens`, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': `Bearer ${jwtToken}`,
+            'X-GitHub-Api-Version': '2022-11-28',
+            'User-Agent': 'handit-ai/1.0.0',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`Failed to create installation access token: ${response.status} - ${JSON.stringify(errorData)}`);
+        }
+
+        const tokenData = await response.json();
+        
+        console.log('✅ Successfully created installation access token');
+        console.log(`   - Token expires at: ${tokenData.expires_at}`);
+        console.log(`   - Permissions: ${JSON.stringify(tokenData.permissions)}`);
+        
+        return tokenData;
+      } catch (error) {
+        console.error('❌ Error creating installation access token:', error);
+        throw error;
+      }
+    }
+
+    /**
+     * Get a valid installation access token for this integration
+     * @returns {Promise<string|null>} Valid installation access token or null if failed
+     */
+    async getInstallationAccessToken() {
+      if (!this.githubAppInstallationId) {
+        console.error('No GitHub App installation ID found for this integration');
+        return null;
+      }
+
+      try {
+        // Create installation access token with repository-specific access
+        const tokenResponse = await GitHubIntegration.createInstallationAccessToken(
+          this.githubAppInstallationId,
+          {
+            repositories: [this.repositoryName], // Grant access only to the specific repository
+            permissions: {
+              contents: 'write',     // Read and write repository contents
+              pull_requests: 'write', // Create and manage pull requests
+              metadata: 'read',      // Read repository metadata
+              issues: 'write',       // Create issues and comments (for PR comments)
+            }
+          }
+        );
+
+        return tokenResponse.token;
+      } catch (error) {
+        console.error('Failed to get installation access token:', error);
+        return null;
+      }
+    }
+
+    /**
      * Check if integration is properly configured
      */
     isConfigured() {
       return !!(
-        this.accessToken &&
+        this.githubAppInstallationId &&
         this.repositoryOwner &&
         this.repositoryName &&
         this.promptFilePath &&

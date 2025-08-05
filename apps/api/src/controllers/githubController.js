@@ -1,11 +1,10 @@
 import crypto from 'crypto';
-import jwt from 'jsonwebtoken';
 import GitHubClient from '../services/githubClient.js';
 import db from '../../models/index.js';
 const { GitHubIntegration, GitHubPullRequest, Company } = db;
 
 /**
- * Initiate GitHub OAuth flow
+ * Initiate GitHub App installation flow
  */
 export const initiateGitHubAuth = async (req, res) => {
   try {
@@ -28,99 +27,126 @@ export const initiateGitHubAuth = async (req, res) => {
     // Generate state parameter for security
     const state = crypto.randomBytes(32).toString('hex');
     
-    const apiUrl = process.env.API_URL
-    const clientId = process.env.GITHUB_CLIENT_ID
-    // Store state in session or cache (for now, we'll include it in the redirect)
-    const githubAuthUrl = new URL('https://github.com/login/oauth/authorize');
-    githubAuthUrl.searchParams.set('client_id', clientId);
-    githubAuthUrl.searchParams.set('redirect_uri', `${apiUrl}/api/git/callback`);
-    githubAuthUrl.searchParams.set('scope', 'repo,read:user,write:repo_hook');
-    githubAuthUrl.searchParams.set('state', `${state}:${companyId}`);
+    const apiUrl = process.env.API_URL;
+    const appId = process.env.GITHUB_APP_ID;
+    
+    if (!appId) {
+      return res.status(500).json({
+        error: 'GitHub App ID not configured'
+      });
+    }
+    
+    // Redirect to GitHub App installation page
+    const githubAppInstallUrl = new URL(`https://github.com/apps/handit-ai/installations/new`);
+    githubAppInstallUrl.searchParams.set('state', `${state}:${companyId}`);
 
-    res.redirect(githubAuthUrl.toString());
+    console.log(`🔗 Redirecting to GitHub App installation: ${githubAppInstallUrl.toString()}`);
+    res.redirect(githubAppInstallUrl.toString());
   } catch (error) {
-    console.error('Error initiating GitHub auth:', error);
+    console.error('Error initiating GitHub App installation:', error);
     res.status(500).json({ 
-      error: 'Failed to initiate GitHub authentication' 
+      error: 'Failed to initiate GitHub App installation' 
     });
   }
 };
 
 /**
- * Handle GitHub OAuth callback
+ * Handle GitHub App installation callback
  */
 export const handleGitHubCallback = async (req, res) => {
   try {
-    const { code, state } = req.query;
+    const { installation_id, setup_action, state } = req.query;
 
-    if (!code || !state) {
+    if (!installation_id || setup_action !== 'install') {
       return res.status(400).json({ 
-        error: 'Missing code or state parameter' 
+        error: 'Invalid GitHub App installation parameters' 
       });
     }
 
-    // Parse state to get company ID
-    const [stateToken, companyId] = state.split(':');
-    
+    // Parse state to get company ID (if provided)
+    let companyId = null;
+    if (state) {
+      const stateParts = state.split(':');
+      if (stateParts.length === 2) {
+        companyId = stateParts[1];
+      }
+    }
+
     if (!companyId) {
-      return res.status(400).json({ 
-        error: 'Invalid state parameter' 
-      });
+      // If no company ID in state, redirect to dashboard to select company
+      const dashboardUrl = process.env.DASHBOARD_BASE_URL || 'http://localhost:3000';
+      return res.redirect(`${dashboardUrl}/github-success?installation_id=${installation_id}&needs_company=true`);
     }
 
-    const clientId = process.env.GITHUB_CLIENT_ID
-    const clientSecret = process.env.GITHUB_CLIENT_SECRET
-    // Exchange code for access token
-    const tokenData = await GitHubClient.exchangeCodeForToken(
-      code,
-      clientId,
-      clientSecret
-    );
-
-    if (tokenData.error) {
-      return res.status(400).json({ 
-        error: `GitHub OAuth error: ${tokenData.error_description}` 
-      });
+    // Verify company exists
+    const company = await Company.findByPk(parseInt(companyId));
+    if (!company) {
+      const dashboardUrl = process.env.DASHBOARD_BASE_URL || 'http://localhost:3000';
+      return res.redirect(`${dashboardUrl}/github-success?error=company_not_found`);
     }
 
-    // Get user information
-    const githubClient = new GitHubClient(tokenData.access_token);
-    const user = await githubClient.getAuthenticatedUser();
-
-    // Create or update GitHub integration
-    const [integration, created] = await GitHubIntegration.findOrCreate({
-      where: { companyId: parseInt(companyId) },
-      defaults: {
-        companyId: parseInt(companyId),
-        accessToken: tokenData.access_token,
-        refreshToken: tokenData.refresh_token,
-        expiresAt: tokenData.expires_in ? 
-          new Date(Date.now() + tokenData.expires_in * 1000) : null,
-        repositoryOwner: user.login,
-        repositoryName: '', // Will be set later
-        promptFilePath: '', // Will be set later
-        active: false, // Inactive until properly configured
-      },
-    });
-
-    if (!created) {
-      // Update existing integration
-      await integration.update({
-        accessToken: tokenData.access_token,
-        refreshToken: tokenData.refresh_token,
-        expiresAt: tokenData.expires_in ? 
-          new Date(Date.now() + tokenData.expires_in * 1000) : null,
-        repositoryOwner: user.login,
+    // Get installation details using GitHub App authentication
+    try {
+      const jwt = GitHubIntegration.generateJWT();
+      const response = await fetch(`https://api.github.com/app/installations/${installation_id}`, {
+        headers: {
+          'Accept': 'application/vnd.github+json',
+          'Authorization': `Bearer ${jwt}`,
+          'X-GitHub-Api-Version': '2022-11-28',
+          'User-Agent': 'handit-ai/1.0.0',
+        },
       });
-    }
 
-    // Redirect to dashboard with success message
-    const dashboardUrl = process.env.DASHBOARD_BASE_URL || 'http://localhost:3000';
-    res.redirect(`${dashboardUrl}/github-success?success=true&integration_id=${integration.id}`);
+      if (!response.ok) {
+        throw new Error(`Failed to get installation details: ${response.status}`);
+      }
+
+      const installationData = await response.json();
+      console.log('📋 GitHub App installation data:', {
+        id: installationData.id,
+        account: installationData.account.login,
+        permissions: installationData.permissions,
+        repositories: installationData.repository_selection
+      });
+
+      // Create or update GitHub integration with installation ID
+      const [integration, created] = await GitHubIntegration.findOrCreate({
+        where: { companyId: parseInt(companyId) },
+        defaults: {
+          companyId: parseInt(companyId),
+          githubAppInstallationId: parseInt(installation_id),
+          repositoryOwner: installationData.account.login,
+          repositoryName: '', // Will be set later by user
+          promptFilePath: '', // Will be set later by user
+          branchName: 'main',
+          active: false, // Inactive until properly configured
+        },
+      });
+
+      if (!created) {
+        // Update existing integration with installation ID
+        await integration.update({
+          githubAppInstallationId: parseInt(installation_id),
+          repositoryOwner: installationData.account.login,
+        });
+      }
+
+      console.log(`✅ GitHub App integration ${created ? 'created' : 'updated'} for company ${company.name}`);
+      console.log(`   - Installation ID: ${installation_id}`);
+      console.log(`   - Account: ${installationData.account.login}`);
+
+      // Redirect to dashboard with success message
+      const dashboardUrl = process.env.DASHBOARD_BASE_URL || 'http://localhost:3000';
+      res.redirect(`${dashboardUrl}/github-success?success=true&integration_id=${integration.id}&installation_id=${installation_id}`);
+    } catch (apiError) {
+      console.error('Error getting GitHub App installation details:', apiError);
+      const dashboardUrl = process.env.DASHBOARD_BASE_URL || 'http://localhost:3000';
+      res.redirect(`${dashboardUrl}/github-success?error=installation_failed`);
+    }
   } catch (error) {
-    console.error('Error handling GitHub callback:', error);
+    console.error('Error handling GitHub App installation callback:', error);
     const dashboardUrl = process.env.DASHBOARD_BASE_URL || 'http://localhost:3000';
-    res.redirect(`${dashboardUrl}/github-success?error=auth_failed`);
+    res.redirect(`${dashboardUrl}/github-success?error=callback_failed`);
   }
 };
 
@@ -265,8 +291,16 @@ export const testGitHubIntegration = async (req, res) => {
       });
     }
 
-    // Test GitHub API access
-    const githubClient = new GitHubClient(integration.accessToken);
+    // Test GitHub App installation access
+    const installationToken = await integration.getInstallationAccessToken();
+    if (!installationToken) {
+      return res.status(400).json({
+        success: false,
+        error: 'Failed to get GitHub App installation access token'
+      });
+    }
+
+    const githubClient = new GitHubClient(installationToken);
 
     try {
       // Try to get repository info
@@ -275,27 +309,39 @@ export const testGitHubIntegration = async (req, res) => {
         integration.repositoryName
       );
 
-      // Try to get the prompt file
-      const file = await githubClient.getContent(
-        integration.repositoryOwner,
-        integration.repositoryName,
-        integration.promptFilePath,
-        integration.branchName
-      );
+      // Try to get the prompt file if configured
+      let promptFile = null;
+      if (integration.promptFilePath) {
+        try {
+          const file = await githubClient.getContent(
+            integration.repositoryOwner,
+            integration.repositoryName,
+            integration.promptFilePath,
+            integration.branchName
+          );
+          promptFile = {
+            path: file.path,
+            size: file.size,
+            lastModified: file.sha,
+          };
+        } catch (fileError) {
+          console.log(`⚠️  Could not access prompt file: ${fileError.message}`);
+        }
+      }
 
       res.status(200).json({
         success: true,
-        message: 'Integration test successful',
+        message: 'GitHub App integration test successful',
+        installation: {
+          id: integration.githubAppInstallationId,
+          owner: integration.repositoryOwner,
+        },
         repository: {
           name: repo.full_name,
           private: repo.private,
           defaultBranch: repo.default_branch,
         },
-        promptFile: {
-          path: file.path,
-          size: file.size,
-          lastModified: file.sha,
-        },
+        promptFile,
       });
     } catch (apiError) {
       res.status(400).json({
@@ -405,8 +451,58 @@ async function handlePullRequestEvent(data) {
 async function handleInstallationEvent(data) {
   const { action, installation } = data;
   
-  // Handle GitHub App installation events
-  console.log(`GitHub App ${action}:`, installation.id);
+  console.log(`📡 GitHub App installation webhook - ${action}:`, {
+    installationId: installation.id,
+    account: installation.account.login,
+    repositorySelection: installation.repository_selection
+  });
   
-  // You can update integrations with installation IDs here if needed
+  if (action === 'created') {
+    // New installation - this will be handled by the callback URL
+    console.log(`✅ New GitHub App installation created: ${installation.id}`);
+  } else if (action === 'deleted') {
+    // Installation deleted - deactivate integrations
+    console.log(`❌ GitHub App installation deleted: ${installation.id}`);
+    
+    const integrations = await GitHubIntegration.findAll({
+      where: {
+        githubAppInstallationId: installation.id,
+        active: true
+      }
+    });
+    
+    for (const integration of integrations) {
+      await integration.update({
+        active: false,
+        githubAppInstallationId: null // Clear the installation ID
+      });
+      console.log(`   - Deactivated integration ${integration.id} for company ${integration.companyId}`);
+    }
+  } else if (action === 'suspend') {
+    // Installation suspended - deactivate integrations
+    console.log(`⏸️  GitHub App installation suspended: ${installation.id}`);
+    
+    await GitHubIntegration.update(
+      { active: false },
+      {
+        where: {
+          githubAppInstallationId: installation.id,
+          active: true
+        }
+      }
+    );
+  } else if (action === 'unsuspend') {
+    // Installation unsuspended - reactivate integrations
+    console.log(`▶️  GitHub App installation unsuspended: ${installation.id}`);
+    
+    await GitHubIntegration.update(
+      { active: true },
+      {
+        where: {
+          githubAppInstallationId: installation.id,
+          active: false
+        }
+      }
+    );
+  }
 } 
