@@ -80,6 +80,14 @@ class GitHubClient {
     const body = {
       message,
       content: Buffer.from(content).toString('base64'),
+      committer: {
+        name: 'handit.ai',
+        email: 'contact@handit.ai',
+      },
+      author: {
+        name: 'handit.ai',
+        email: 'contact@handit.ai',
+      },
     };
 
     if (sha) body.sha = sha;
