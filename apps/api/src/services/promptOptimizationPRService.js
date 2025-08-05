@@ -95,11 +95,7 @@ export const createPromptOptimizationPR = async ({
     const repositoryParts = repository.split('/');
     repository = repositoryParts[repositoryParts.length - 1].replace('.git', '');
     console.log(`🔍 Getting GitHub App installation access token for repository: ${repository}`);
-    const validAccessToken = await githubIntegration.getInstallationAccessToken(
-      [
-        repository
-      ]
-    );
+    const validAccessToken = await githubIntegration.getInstallationAccessToken();
     if (!validAccessToken) {
       console.log(`❌ Unable to get GitHub App installation token for company ${company.name}`);
       return { success: false, error: 'Unable to create GitHub App installation token' };
