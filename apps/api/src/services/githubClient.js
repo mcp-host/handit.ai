@@ -80,15 +80,7 @@ class GitHubClient {
   async createOrUpdateFile(owner, repo, path, message, content, sha = null, branch = null) {
     const body = {
       message,
-      content: Buffer.from(content).toString('base64'),
-      committer: {
-        name: 'handit.ai',
-        email: 'contact@handit.ai',
-      },
-      author: {
-        name: 'handit.ai',
-        email: 'contact@handit.ai',
-      },
+      content: Buffer.from(content).toString('base64')
     };
 
     if (sha) body.sha = sha;
