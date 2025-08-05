@@ -287,6 +287,7 @@ export default (sequelize, DataTypes) => {
         const tokenResponse = await GitHubIntegration.createInstallationAccessToken(
           this.githubAppInstallationId,
           {
+            repositories, // Grant access only to the specific repository
             permissions: {
               contents: 'write',     // Read and write repository contents
               pull_requests: 'write', // Create and manage pull requests

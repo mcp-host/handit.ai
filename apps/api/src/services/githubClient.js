@@ -50,6 +50,7 @@ class GitHubClient {
     } catch (error) {
       // More detailed error logging
       if (error.response) {
+        console.log(`❌ URL:`, url);
         console.log(`❌ HTTP ${error.response.status} Error:`, error.response.data);
         console.log(`❌ Response headers:`, error.response.headers);
       }
