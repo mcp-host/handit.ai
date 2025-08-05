@@ -36,7 +36,14 @@ export const initiateGitHubAuth = async (req, res) => {
       });
     }
     
-    // Redirect to GitHub App installation page
+    if (!apiUrl) {
+      return res.status(500).json({
+        error: 'API_URL not configured'
+      });
+    }
+    
+    // Redirect to GitHub App installation page with state parameter
+    // The callback URL is configured in the GitHub App settings, not as a parameter
     const githubAppInstallUrl = new URL(`https://github.com/apps/handit-ai/installations/new`);
     githubAppInstallUrl.searchParams.set('state', `${state}:${companyId}`);
 
@@ -69,6 +76,8 @@ export const handleGitHubCallback = async (req, res) => {
       const stateParts = state.split(':');
       if (stateParts.length === 2) {
         companyId = stateParts[1];
+      } else {
+        companyId = state;
       }
     }
 
