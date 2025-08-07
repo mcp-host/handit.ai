@@ -224,6 +224,7 @@ export function CLIAuthForm() {
                   sx={{
                     fontFamily: 'monospace',
                     fontWeight: 'bold',
+                    color: '#05171c',
                   }}
                 >
                   {success.code}
@@ -262,7 +263,7 @@ export function CLIAuthForm() {
         )}
 
         {/* Main Form */}
-        <Card>
+        {!success && <Card>
           <CardContent sx={{ p: 3 }}>
             <Typography
               variant="h6"
@@ -279,7 +280,7 @@ export function CLIAuthForm() {
                 sx={{ mb: 3 }}
                 onClose={() => setError('')}
               >
-                {error}
+                {'Invalid Credentials'}
               </Alert>
             )}
 
@@ -347,7 +348,7 @@ export function CLIAuthForm() {
               </Typography>
             </Box>
           </CardContent>
-        </Card>
+        </Card>}
       </Box>
     </Box>
   );
