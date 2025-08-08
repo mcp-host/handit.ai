@@ -201,7 +201,7 @@ export const handleGitHubWebhook = async (req, res) => {
  */
 export const assessRepoAndCreatePR = async (req, res) => {
   try {
-    const { integrationId, repoUrl, branch, preferLocalClone } = req.body || {};
+    const { integrationId, repoUrl, branch, preferLocalClone, hintFilePath, hintFunctionName, executionTree, useHintsFlow } = req.body || {};
     if (!integrationId || !repoUrl) {
       return res.status(400).json({ success: false, error: 'integrationId and repoUrl are required' });
     }
@@ -221,13 +221,17 @@ export const assessRepoAndCreatePR = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Unable to obtain installation token' });
     }
 
-    // Run assessment (Phase 1 MVP)
+    // Run assessment (supports hints-driven flow)
     const assessment = await assessRepositoryAI({
       repoUrl,
       companyId: integration.companyId,
       models: db,
       branch: branch || null,
       preferLocalClone: Boolean(preferLocalClone ?? true),
+      hintFilePath: hintFilePath || null,
+      hintFunctionName: hintFunctionName || null,
+      executionTree: executionTree || null,
+      useHintsFlow: useHintsFlow !== false,
     });
     if (!assessment.success) {
       return res.status(400).json({ success: false, error: assessment.error || 'Assessment failed' });
@@ -246,29 +250,46 @@ export const assessRepoAndCreatePR = async (req, res) => {
     await github.createRef(owner, repo, `refs/heads/${headBranch}`, baseRef.object.sha);
 
     // Prepare docs content
-    const { providersDetected = [], frameworksDetected = [], candidates = [] } = assessment;
-    // Fetch exact file contents for top candidates to perform deeper prompt extraction
-    const topForContent = candidates.slice(0, 15);
+    const { providersDetected = [], frameworksDetected = [], candidates = [], selectedFiles = [] } = assessment;
     const files = [];
-    for (const c of topForContent) {
-      try {
-        const file = await github.getContent(owner, repo, c.filePath, headBranch);
-        if (file && file.content) {
-          const content = Buffer.from(file.content, 'base64').toString('utf-8');
-          files.push({ path: c.filePath, content });
+    if (Array.isArray(selectedFiles) && selectedFiles.length > 0) {
+      // Use the hints-selected files with content captured from local scan
+      for (const f of selectedFiles.slice(0, 2)) {
+        if (f && f.path && typeof f.content === 'string') {
+          files.push({ path: f.path, content: f.content });
         }
-      } catch (err) {
-        console.log(`⚠️  Could not read candidate file ${c.filePath}: ${err.message}`);
+      }
+    } else {
+      // Fallback: Fetch exact file contents for top candidates to perform deeper prompt extraction
+      const topForContent = candidates.slice(0, 15);
+      for (const c of topForContent) {
+        try {
+          const file = await github.getContent(owner, repo, c.filePath, headBranch);
+          if (file && file.content) {
+            const content = Buffer.from(file.content, 'base64').toString('utf-8');
+            files.push({ path: c.filePath, content });
+          }
+        } catch (err) {
+          console.log(`⚠️  Could not read candidate file ${c.filePath}: ${err.message}`);
+        }
       }
     }
 
-    const assessmentMd = await buildAssessmentFromFilesMarkdown({
-      repoOwner: owner,
-      repoName: repo,
-      providersDetected,
-      frameworksDetected,
-      files,
-    });
+    // If hints flow produced concrete prompts, build a prompt-only best practices assessment; else do file-based assessment
+    const assessmentMd = (Array.isArray(assessment.promptsSelected) && assessment.promptsSelected.length > 0)
+      ? await (async () => {
+          const { generatePromptBestPracticesAssessmentMarkdown } = await import('../services/repoAIAssessmentService.js');
+          return generatePromptBestPracticesAssessmentMarkdown({
+            promptsSelected: assessment.promptsSelected,
+          });
+        })()
+      : await buildAssessmentFromFilesMarkdown({
+          repoOwner: owner,
+          repoName: repo,
+          providersDetected,
+          frameworksDetected,
+          files,
+        });
 
     // Upsert files on the new branch
     await upsertFile(github, owner, repo, 'docs/ai-assessment.md', assessmentMd, headBranch);

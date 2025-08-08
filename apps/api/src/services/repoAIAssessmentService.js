@@ -26,7 +26,7 @@ import { spawn } from 'child_process';
  * @param {string|null} [params.branch] - Optional branch to prefer for context (best-effort)
  * @returns {Promise<Object>} assessment result
  */
-export const assessRepositoryAI = async ({ repoUrl, companyId, models, branch = null, preferLocalClone = false }) => {
+export const assessRepositoryAI = async ({ repoUrl, companyId, models, branch = null, preferLocalClone = false, hintFilePath = null, hintFunctionName = null, executionTree = null, useHintsFlow = true }) => {
   if (!repoUrl) {
     return { success: false, error: 'repoUrl is required' };
   }
@@ -63,6 +63,27 @@ export const assessRepositoryAI = async ({ repoUrl, companyId, models, branch = 
     }
 
     const githubClient = new GitHubClient(token);
+
+    // If hints were provided, run the specialized hints-driven flow
+    const hasHints = Boolean((hintFilePath && typeof hintFilePath === 'string') || (hintFunctionName && typeof hintFunctionName === 'string') || (executionTree && typeof executionTree === 'object'));
+    if (useHintsFlow && hasHints) {
+      try {
+        const hinted = await assessRepositoryWithHintsFlow({
+          repoInfo,
+          branch,
+          token,
+          githubClient,
+          hintFilePath,
+          hintFunctionName,
+          executionTree,
+        });
+        return hinted;
+      } catch (e) {
+        // Fall through to default heuristic scan if hints flow fails
+        // but keep a breadcrumb in meta for debugging
+        console.log('⚠️  Hints flow failed, falling back to heuristic scan:', e.message);
+      }
+    }
 
     // Prepare search queries (high-signal, compact)
     const queries = buildHighSignalQueries();
@@ -359,6 +380,7 @@ export default {
   assessRepositoryAI,
   generateComprehensiveAssessmentMarkdown,
   buildAssessmentFromFilesMarkdown,
+  generatePromptBestPracticesAssessmentMarkdown,
 };
 
 // —— Local clone utilities ——
@@ -467,6 +489,199 @@ function isSearchableFileLocal(filename) {
   if (idx === -1) return false;
   const extension = filename.toLowerCase().substring(idx);
   return searchableExtensions.includes(extension);
+}
+
+// —— Hints-driven flow ——
+
+async function assessRepositoryWithHintsFlow({ repoInfo, branch, token, githubClient, hintFilePath, hintFunctionName, executionTree }) {
+  // 1) Determine branch and clone locally to obtain repository structure
+  const defaultBranch = await getDefaultBranchName(githubClient, repoInfo.owner, repoInfo.repo);
+  const branchToUse = branch || defaultBranch;
+  const localPath = await cloneRepoShallow({ owner: repoInfo.owner, repo: repoInfo.repo, token, branch: branchToUse });
+  let providersDetected = new Set();
+  let frameworksDetected = new Set();
+
+  try {
+    const allFiles = await listFilesRecursive(localPath, 0, 6);
+    const relativeFiles = allFiles
+      .filter(isSearchableFileLocal)
+      .map(p => path.relative(localPath, p));
+
+    // 2) Ask LLM to pick candidate files based on hints + repo structure
+    const llmCandidates = await pickCandidatesFromHints({
+      repoOwner: repoInfo.owner,
+      repoName: repoInfo.repo,
+      hintFilePath,
+      hintFunctionName,
+      executionTree,
+      fileList: relativeFiles,
+    });
+
+    // Always include the hinted file if present
+    const candidateSet = new Set([...(llmCandidates || []), ...(hintFilePath ? [hintFilePath] : []), ...(executionTree ? executionTree.calls.map(e => e.file) : [])]);
+    console.log('candidateSet', candidateSet);
+    const candidates = Array.from(candidateSet).slice(0, 25);
+
+    // 3) Read candidate file contents from local clone
+    const candidateFilesWithContent = [];
+    for (const rel of candidates) {
+      try {
+        const abs = path.join(localPath, rel);
+        const content = await fsReadFile(abs, 'utf-8');
+        candidateFilesWithContent.push({ path: rel, content });
+      } catch {
+        // skip unreadable
+      }
+    }
+
+    // 4) Heuristically and (if needed) with LLM, detect up to 2 prompts
+    let promptsSelected = [];
+    for (const file of candidateFilesWithContent) {
+      if (promptsSelected.length >= 2) break;
+      const heuristics = extractPromptsFromContent(file.content);
+      for (const p of heuristics) {
+        if (promptsSelected.length >= 2) break;
+        promptsSelected.push({ filePath: file.path, ...p });
+      }
+    }
+
+    console.log('promptsSelected 1', promptsSelected);
+
+    if (promptsSelected.length < 2) {
+      const remainingFiles = candidateFilesWithContent.filter(f => !promptsSelected.some(p => p.filePath === f.path));
+      const llmExtracted = await detectPromptsViaLLM({ files: remainingFiles, maxPrompts: 2 - promptsSelected.length });
+      for (const p of llmExtracted) {
+        if (promptsSelected.length >= 2) break;
+        promptsSelected.push(p);
+      }
+    }
+
+    console.log('promptsSelected 2', promptsSelected);
+
+    // Basic provider/framework detection from candidate contents using existing query hints
+    const queries = [...buildHighSignalQueries()];
+    for (const f of candidateFilesWithContent) {
+      for (const q of queries) {
+        const probe = q.matchHint || q.query;
+        if (probe && f.content.includes(probe)) {
+          if (q.provider) providersDetected.add(q.provider);
+          if (q.framework) frameworksDetected.add(q.framework);
+        }
+      }
+    }
+
+    // Build candidates list for parity with heuristic flow
+    const scoredCandidates = candidateFilesWithContent.map(f => ({
+      filePath: f.path,
+      provider: null,
+      framework: null,
+      indicators: [],
+      snippet: (f.content || '').slice(0, 400),
+      score: 1,
+    }));
+
+
+    return {
+      success: true,
+      repo: { owner: repoInfo.owner, repo: repoInfo.repo, branch: branch || null },
+      providersDetected: Array.from(providersDetected),
+      frameworksDetected: Array.from(frameworksDetected),
+      candidates: scoredCandidates,
+      selectedFiles: candidateFilesWithContent.filter(f => promptsSelected.some(p => p.filePath === f.path)).slice(0, 2),
+      promptsSelected: promptsSelected.slice(0, 2),
+      meta: {
+        strategiesUsed: ['hints-flow'],
+        hints: { hintFilePath, hintFunctionName, hasExecutionTree: Boolean(executionTree) },
+        candidateCount: candidates.length,
+      }
+    };
+  } finally {
+    // Cleanup local clone
+    try { await rm(localPath, { recursive: true, force: true }); } catch { /* ignore */ }
+  }
+}
+
+async function pickCandidatesFromHints({ repoOwner, repoName, hintFilePath, hintFunctionName, executionTree, fileList }) {
+  const limitedList = fileList.slice(0, 5000); // cap size
+  const treePreview = limitedList.join('\n');
+  const userContent = [
+    `Repository: ${repoOwner}/${repoName}`,
+    hintFilePath ? `Hint file path: ${hintFilePath}` : null,
+    hintFunctionName ? `Hint function: ${hintFunctionName}` : null,
+    executionTree ? `Execution tree JSON (may be partial):\n\n\`\`\`json\n${JSON.stringify(executionTree).slice(0, 4000)}\n\`\`\`` : null,
+    '',
+    'Repository file list (relative paths):',
+    '```text',
+    treePreview,
+    '```',
+    '',
+    'Task: From the above hints and repository structure, list the most likely files containing prompts, constants, configs, or templates related to the hinted agent. Include the hinted file if relevant. Return STRICT JSON only:',
+    '{ "candidates": ["path/one", "path/two", ...], "rationale": "short" }',
+    'Limit to 20 candidates, ordered by likelihood.'
+  ].filter(Boolean).join('\n');
+
+  const messages = [
+    { role: 'system', content: 'You are a code analysis assistant at handit.ai. Given hints and a repository tree, select candidate files likely to contain prompts for the agent. Respond with strict JSON only.' },
+    { role: 'user', content: userContent }
+  ];
+
+  const token = process.env.OPENAI_API_KEY;
+  const completion = await generateAIResponse({
+    messages,
+    model: 'gpt-4o',
+    provider: 'OpenAI',
+    token,
+    temperature: 0.2,
+  });
+
+  const text = completion.text || completion.choices?.[0]?.message?.content || '';
+  console.log('pickCandidatesFromHints', text);
+  try {
+    const parsed = JSON.parse(text);
+    const arr = Array.isArray(parsed?.candidates) ? parsed.candidates : [];
+    return arr.filter(x => typeof x === 'string');
+  } catch {
+    // Fallback: simple heuristic from file names
+    const heur = limitedList.filter(p => /prompt|prompts|system|instruction|template|config|constant|ai|llm/i.test(p)).slice(0, 20);
+    return heur;
+  }
+}
+
+async function detectPromptsViaLLM({ files, maxPrompts = 2 }) {
+  const results = [];
+  const token = process.env.OPENAI_API_KEY;
+  for (const file of files) {
+    if (results.length >= maxPrompts) break;
+    const messages = [
+      { role: 'system', content: 'You are a precise code auditor. Extract at most TWO prompts (system/user/assistant texts or templates) from the provided file content. Return STRICT JSON only. Only return prompts nothing else' },
+      { role: 'user', content: [
+        `Path: ${file.path}`,
+        'Content (truncated to 8k chars):',
+        '```',
+        (file.content || '').slice(0, 8000),
+        '```',
+        '',
+        'Return JSON shape:',
+        '{ "prompts": [ { "role": "system|user|assistant|null", "text": "...", "variables": ["..."], "model": "optional" } ] }',
+      ].join('\n') }
+    ];
+
+    const completion = await generateAIResponse({ messages, model: 'gpt-4o', provider: 'OpenAI', token, temperature: 0 });
+    const text = completion.text || completion.choices?.[0]?.message?.content || '';
+    try {
+      const parsed = JSON.parse(text);
+      const arr = Array.isArray(parsed?.prompts) ? parsed.prompts : [];
+      for (const p of arr) {
+        if (results.length >= maxPrompts) break;
+        if (p && typeof p.text === 'string' && p.text.trim().length > 0) {
+          results.push({ filePath: file.path, type: 'llm', role: p.role || null, text: p.text, model: p.model || null, variables: Array.isArray(p.variables) ? p.variables : [] });
+        }
+      }
+    } catch {
+      // ignore parsing issues, continue
+    }
+  }
+  return results;
 }
 
 // —— AI-generated comprehensive assessment ——
@@ -585,6 +800,85 @@ export async function buildAssessmentFromFilesMarkdown({ repoOwner, repoName, pr
   });
 
   const md = completion.text || completion.choices?.[0]?.message?.content || '# AI Assessment by handit.ai\n\n(No content)';
+  return md;
+}
+
+// Build a focused assessment of 1-2 prompts using best practices (Claude 4 prompt engineering guidance)
+export async function generatePromptBestPracticesAssessmentMarkdown({ promptsSelected = [] }) {
+  const normalized = (Array.isArray(promptsSelected) ? promptsSelected : []).slice(0, 2).map((p, idx) => ({
+    index: idx + 1,
+    filePath: p.filePath || null,
+    role: p.role || null,
+    type: p.type || null,
+    model: p.model || null,
+    variables: Array.isArray(p.variables) ? p.variables : [],
+    text: typeof p.text === 'string' ? (p.text.length > 5000 ? p.text.slice(0, 5000) + '…' : p.text) : '',
+  }));
+
+  const bestPractices = [
+    'Be explicit with instructions and desired output',
+    'Add context and rationale for better alignment',
+    'Use examples that reflect desired behaviors',
+    'Control the format of responses (specify structure/sections)',
+    'Prefer positive instructions over prohibitions',
+    'Use XML-like tags when strict formatting is required',
+    'Match prompt style to desired output style',
+    'Guide thinking and reflection for multi-step reasoning',
+    'Optimize parallel tool calling where applicable',
+    'Avoid focusing on passing tests/hard-coding; prefer general solutions',
+  ];
+
+  const messages = [
+    {
+      role: 'system',
+      content: 'You are a senior AI reliability engineer at handit.ai. Perform a focused audit of the provided prompts only. Evaluate strictly against Claude 4 prompt-engineering best practices. Output clean, professional Markdown only. Do NOT include file paths, roles, or any metadata in the report. Preserve variable placeholders exactly (e.g., ${var}, {{var}}, {var}).'
+    },
+    {
+      role: 'user',
+      content: [
+        'Prompts under review (max 2) as JSON (for your analysis only):',
+        '```json',
+        JSON.stringify(normalized, null, 2),
+        '```',
+        '',
+        'Claude 4 best practices to consider (for your analysis only):',
+        '```text',
+        bestPractices.map((b, i) => `${i + 1}. ${b}`).join('\n'),
+        '```',
+        '',
+        'Produce ONE professional Markdown document titled "## SAT Summary". For EACH prompt, include exactly:',
+        '### Prompt N',
+        '#### Original prompt',
+        '```text',
+        '<<insert the exact original prompt text here, not a placeholder>>',
+        '```',
+        '#### Issues (best-practices)',
+        '- Bullet list of concrete issues mapped to best practices. Include severity (High/Med/Low).',
+        '#### Proposed changes',
+        '- Bullet list of specific, actionable changes.',
+        '#### Suggested prompt',
+        '```text',
+        '<<insert the fully rewritten prompt applying the proposed changes; preserve variables exactly>>',
+        '```',
+        '',
+        'Constraints:',
+        '- Do not include file paths, roles, types, or any metadata in the output.',
+        '- Do not include any content from other files or invent details.',
+        '- Keep it concise and direct.'
+      ].join('\n')
+    }
+  ];
+
+  const token = process.env.OPENAI_API_KEY;
+  const completion = await generateAIResponse({
+    messages,
+    model: 'gpt-4o-mini',
+    provider: 'OpenAI',
+    token,
+    temperature: 0.2,
+  });
+
+  const md = completion.text || completion.choices?.[0]?.message?.content || '## SAT Summary\n\n(No content)';
   return md;
 }
 
