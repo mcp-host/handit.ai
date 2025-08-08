@@ -1,6 +1,8 @@
 import crypto from 'crypto';
+import axios from 'axios';
 import GitHubClient from '../services/githubClient.js';
 import db from '../../models/index.js';
+import { assessRepositoryAI, buildAssessmentFromFilesMarkdown } from '../services/repoAIAssessmentService.js';
 const { GitHubIntegration, GitHubPullRequest, Company } = db;
 
 /**
@@ -97,7 +99,7 @@ export const handleGitHubCallback = async (req, res) => {
     // Get installation details using GitHub App authentication
     try {
       const jwt = GitHubIntegration.generateJWT();
-      const response = await fetch(`https://api.github.com/app/installations/${installation_id}`, {
+      const response = await axios.get(`https://api.github.com/app/installations/${installation_id}`, {
         headers: {
           'Accept': 'application/vnd.github+json',
           'Authorization': `Bearer ${jwt}`,
@@ -106,11 +108,7 @@ export const handleGitHubCallback = async (req, res) => {
         },
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to get installation details: ${response.status}`);
-      }
-
-      const installationData = await response.json();
+      const installationData = response.data;
       console.log('📋 GitHub App installation data:', {
         id: installationData.id,
         account: installationData.account.login,
@@ -192,6 +190,115 @@ export const handleGitHubWebhook = async (req, res) => {
     res.status(500).json({ error: 'Failed to process webhook' });
   }
 };
+
+/**
+ * Public endpoint: Assess a repository and create a documentation PR
+ * Body: { integrationId: number, repoUrl: string, branch?: string }
+ * - Uses the GitHub App installation linked to the integration to access the repo
+ * - Runs heuristic assessment to detect prompts/providers
+ * - Creates a branch and commits docs: docs/ai-assessment.md and docs/prompt-inventory.md
+ * - Opens a PR to the default branch
+ */
+export const assessRepoAndCreatePR = async (req, res) => {
+  try {
+    const { integrationId, repoUrl, branch, preferLocalClone } = req.body || {};
+    if (!integrationId || !repoUrl) {
+      return res.status(400).json({ success: false, error: 'integrationId and repoUrl are required' });
+    }
+    console.log('🔍 Integration ID:', integrationId);
+
+    const integration = await GitHubIntegration.findByPk(Number(integrationId));
+    console.log('🔍 Integration:', integration);
+    if (!integration) {
+      return res.status(404).json({ success: false, error: 'GitHubIntegration not found' });
+    }
+    if (!integration.isConfigured()) {
+      return res.status(400).json({ success: false, error: 'GitHub integration is not configured' });
+    }
+
+    const token = await integration.getInstallationAccessToken();
+    if (!token) {
+      return res.status(400).json({ success: false, error: 'Unable to obtain installation token' });
+    }
+
+    // Run assessment (Phase 1 MVP)
+    const assessment = await assessRepositoryAI({
+      repoUrl,
+      companyId: integration.companyId,
+      models: db,
+      branch: branch || null,
+      preferLocalClone: Boolean(preferLocalClone ?? true),
+    });
+    if (!assessment.success) {
+      return res.status(400).json({ success: false, error: assessment.error || 'Assessment failed' });
+    }
+
+    const github = new GitHubClient(token);
+    const { owner, repo } = assessment.repo;
+
+    // Determine default branch
+    const repoInfo = await github.getRepository(owner, repo);
+    const baseBranch = repoInfo.default_branch || 'main';
+
+    // Create branch
+    const headBranch = `ai-assessment-${Date.now()}`;
+    const baseRef = await github.getRef(owner, repo, `heads/${baseBranch}`);
+    await github.createRef(owner, repo, `refs/heads/${headBranch}`, baseRef.object.sha);
+
+    // Prepare docs content
+    const { providersDetected = [], frameworksDetected = [], candidates = [] } = assessment;
+    // Fetch exact file contents for top candidates to perform deeper prompt extraction
+    const topForContent = candidates.slice(0, 15);
+    const files = [];
+    for (const c of topForContent) {
+      try {
+        const file = await github.getContent(owner, repo, c.filePath, headBranch);
+        if (file && file.content) {
+          const content = Buffer.from(file.content, 'base64').toString('utf-8');
+          files.push({ path: c.filePath, content });
+        }
+      } catch (err) {
+        console.log(`⚠️  Could not read candidate file ${c.filePath}: ${err.message}`);
+      }
+    }
+
+    const assessmentMd = await buildAssessmentFromFilesMarkdown({
+      repoOwner: owner,
+      repoName: repo,
+      providersDetected,
+      frameworksDetected,
+      files,
+    });
+
+    // Upsert files on the new branch
+    await upsertFile(github, owner, repo, 'docs/ai-assessment.md', assessmentMd, headBranch);
+
+    // Create PR
+    const prTitle = `AI assessment docs by handit.ai for ${owner}/${repo}`;
+    const prBody = `This PR adds an initial AI Assessment and Prompt Inventory generated by handit.ai.\n\n- Providers detected: ${providersDetected.join(', ') || 'none'}\n- Frameworks detected: ${frameworksDetected.join(', ') || 'none'}\n- Candidates found: ${candidates.length}`;
+
+    const pr = await github.createPullRequest(owner, repo, prTitle, headBranch, baseBranch, prBody);
+
+    return res.status(200).json({ success: true, prNumber: pr.number, prUrl: pr.html_url, branch: headBranch, summary: { providersDetected, frameworksDetected, candidates: candidates.length } });
+  } catch (error) {
+    console.error('Error in assessRepoAndCreatePR:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+async function upsertFile(github, owner, repo, path, content, branch) {
+  let sha = null;
+  try {
+    const existing = await github.getContent(owner, repo, path, branch);
+    if (existing && existing.sha) sha = existing.sha;
+  } catch {
+    // File likely does not exist; proceed with create
+  }
+  const message = `docs(assessment): add/update ${path}`;
+  await github.createOrUpdateFile(owner, repo, path, message, content, sha, branch);
+}
+
+// Deprecated local builders removed in favor of AI-generated assessment
 
 /**
  * Get GitHub integrations for a company

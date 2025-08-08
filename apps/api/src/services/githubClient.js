@@ -173,6 +173,11 @@ class GitHubClient {
       return result;
     } catch (error) {
       console.error(`❌ Error searching code in ${owner}/${repo}:`, error.message);
+      if (error.response.message.startsWith('API rate limit excee')) {
+        setTimeout(() => {
+          return { items: [] };
+        }, 1000);
+      }
       
       // Check for specific GitHub API errors
       if (error.message.includes('403')) {

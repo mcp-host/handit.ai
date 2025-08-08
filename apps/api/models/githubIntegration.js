@@ -2,6 +2,7 @@
 import { Model } from 'sequelize';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import axios from 'axios';
 
 export default (sequelize, DataTypes) => {
   class GitHubIntegration extends Model {
@@ -113,27 +114,21 @@ export default (sequelize, DataTypes) => {
 
       try {
         console.log('Refreshing GitHub access token...');
-        
-        const response = await fetch('https://github.com/login/oauth/access_token', {
-          method: 'POST',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        const { data } = await axios.post(
+          'https://github.com/login/oauth/access_token',
+          {
             client_id: process.env.GITHUB_CLIENT_ID,
             client_secret: process.env.GITHUB_CLIENT_SECRET,
             refresh_token: GitHubIntegration.decryptToken(this.refreshToken),
             grant_type: 'refresh_token',
-          }),
-        });
-
-        if (!response.ok) {
-          console.error('Failed to refresh GitHub token:', response.status, response.statusText);
-          return false;
-        }
-
-        const data = await response.json();
+          },
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+          }
+        );
 
         if (data.error) {
           console.error('GitHub token refresh error:', data.error_description || data.error);
@@ -242,24 +237,21 @@ export default (sequelize, DataTypes) => {
       }
 
       try {
-        const response = await fetch(`https://api.github.com/app/installations/${installationId}/access_tokens`, {
-          method: 'POST',
-          headers: {
-            'Accept': 'application/vnd.github+json',
-            'Authorization': `Bearer ${jwtToken}`,
-            'X-GitHub-Api-Version': '2022-11-28',
-            'User-Agent': 'handit-ai/1.0.0',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody),
-        });
+        const response = await axios.post(
+          `https://api.github.com/app/installations/${installationId}/access_tokens`,
+          requestBody,
+          {
+            headers: {
+              'Accept': 'application/vnd.github+json',
+              'Authorization': `Bearer ${jwtToken}`,
+              'X-GitHub-Api-Version': '2022-11-28',
+              'User-Agent': 'handit-ai/1.0.0',
+              'Content-Type': 'application/json',
+            },
+          }
+        );
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(`Failed to create installation access token: ${response.status} - ${JSON.stringify(errorData)}`);
-        }
-
-        const tokenData = await response.json();
+        const tokenData = response.data;
         
         console.log('✅ Successfully created installation access token');
         console.log(`   - Token expires at: ${tokenData.expires_at}`);

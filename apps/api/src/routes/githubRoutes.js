@@ -6,7 +6,8 @@ import {
   getGitHubIntegrations,
   updateGitHubIntegration,
   testGitHubIntegration,
-  deleteGitHubIntegration
+  deleteGitHubIntegration,
+  assessRepoAndCreatePR
 } from '../controllers/githubController.js';
 import { authenticateJWT } from '../middleware/authMiddleware.js';
 
@@ -16,6 +17,7 @@ const router = express.Router();
 router.get('/auth', initiateGitHubAuth);
 router.get('/callback', handleGitHubCallback);
 router.post('/webhook', handleGitHubWebhook);
+router.post('/assess-and-pr', assessRepoAndCreatePR);
 
 // Protected routes (require authentication)
 router.get('/integrations', authenticateJWT, getGitHubIntegrations);

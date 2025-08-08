@@ -1,0 +1,653 @@
+import GitHubClient from './githubClient.js';
+import { generateAIResponse } from './aiService.js';
+import path from 'path';
+import { mkdtemp, rm, readFile as fsReadFile, readdir } from 'fs/promises';
+import { tmpdir } from 'os';
+import { spawn } from 'child_process';
+
+/**
+ * Repo AI Assessment Service (Phase 1 — Heuristic Search MVP)
+ *
+ * Given a GitHub repo URL and companyId, detects LLM provider/framework usage
+ * and locates likely prompts by using the GitHub search API and a minimal
+ * fallback recursive scan. Returns an in-memory result set of candidates with
+ * basic scoring and metadata. No DB persistence or routes here (Phase 2).
+ *
+ * Expected usage:
+ * const result = await assessRepositoryAI({ repoUrl, companyId, models });
+ */
+
+/**
+ * Main entry: assess a repository and return detected AI usage and prompt candidates
+ * @param {Object} params
+ * @param {string} params.repoUrl - GitHub repository URL (or owner/repo)
+ * @param {number|string} params.companyId - Company ID to fetch GitHub installation token
+ * @param {Object} params.models - Sequelize models (must include Company and GitHubIntegration)
+ * @param {string|null} [params.branch] - Optional branch to prefer for context (best-effort)
+ * @returns {Promise<Object>} assessment result
+ */
+export const assessRepositoryAI = async ({ repoUrl, companyId, models, branch = null, preferLocalClone = false }) => {
+  if (!repoUrl) {
+    return { success: false, error: 'repoUrl is required' };
+  }
+  if (!companyId) {
+    return { success: false, error: 'companyId is required' };
+  }
+  if (!models) {
+    return { success: false, error: 'models is required' };
+  }
+
+  try {
+    const repoInfo = parseRepositoryUrl(repoUrl);
+    if (!repoInfo) {
+      return { success: false, error: 'Invalid repository URL format' };
+    }
+
+    // Acquire GitHub App installation token via existing integration
+    const company = await models.Company.findByPk(companyId);
+    if (!company) {
+      return { success: false, error: 'Company not found' };
+    }
+
+    console.log('🔍 Company:', company);
+
+    const githubIntegration = await models.GitHubIntegration.findOne({ where: { companyId } });
+    console.log('🔍 GitHub Integration:', githubIntegration);
+    if (!githubIntegration || !githubIntegration.isConfigured()) {
+      return { success: false, error: 'GitHub integration is not configured for this company' };
+    }
+
+    const token = await githubIntegration.getInstallationAccessToken();
+    if (!token) {
+      return { success: false, error: 'Unable to obtain GitHub installation token' };
+    }
+
+    const githubClient = new GitHubClient(token);
+
+    // Prepare search queries (high-signal, compact)
+    const queries = buildHighSignalQueries();
+    const fallbackQueries = buildFallbackQueries();
+
+    const usedStrategies = [];
+    const fileMap = new Map(); // key: filePath, value: { path, content, sha, indicators: Set<string>, providers: Set<string>, frameworks: Set<string> }
+    const providersDetected = new Set();
+    const frameworksDetected = new Set();
+
+    let usedLocalClone = false;
+
+    if (!preferLocalClone) {
+      // Search API pass
+      for (const q of queries) {
+        try {
+          usedStrategies.push(`search:${q.name}`);
+          const results = await githubClient.searchCode(repoInfo.owner, repoInfo.repo, q.query);
+          for (const item of results.items || []) {
+            try {
+              const file = await githubClient.getContent(repoInfo.owner, repoInfo.repo, item.path, branch || undefined);
+              if (!file || !file.content) continue;
+              const content = Buffer.from(file.content, 'base64').toString('utf-8');
+              if (!content || !content.includes(q.matchHint || q.queryFragment || extractProbe(q.query))) continue;
+
+              const record = ensureFileRecord(fileMap, item.path, content, file.sha);
+              if (q.provider) {
+                record.providers.add(q.provider);
+                providersDetected.add(q.provider);
+              }
+              if (q.framework) {
+                record.frameworks.add(q.framework);
+                frameworksDetected.add(q.framework);
+              }
+              record.indicators.add(q.name);
+            } catch {
+              // ignore file fetch errors for robustness
+            }
+          }
+        } catch {
+          // ignore query errors; continue others
+        }
+      }
+    }
+
+    // If nothing found via search API, attempt a minimal fallback scan
+    if (!preferLocalClone && fileMap.size === 0) {
+      for (const fq of fallbackQueries) {
+        try {
+          usedStrategies.push(`fallback:${fq.name}`);
+          const fbResults = await githubClient.searchInRepositoryFiles(
+            repoInfo.owner,
+            repoInfo.repo,
+            fq.query
+          );
+          for (const r of fbResults) {
+            const record = ensureFileRecord(fileMap, r.path, r.content, r.sha);
+            record.indicators.add(fq.name);
+          }
+        } catch {
+          // ignore and proceed
+        }
+      }
+    }
+
+    // If still empty or local clone preferred, try local clone scan
+    if (fileMap.size === 0 || preferLocalClone) {
+      try {
+        const defaultBranch = await getDefaultBranchName(githubClient, repoInfo.owner, repoInfo.repo);
+        const branchToUse = branch || defaultBranch;
+        const localPath = await cloneRepoShallow({ owner: repoInfo.owner, repo: repoInfo.repo, token, branch: branchToUse });
+        usedLocalClone = true;
+        usedStrategies.push(`local-clone:${branchToUse}`);
+
+        const localResults = await scanLocalRepository(localPath, { queries, fallbackQueries });
+        for (const result of localResults) {
+          const record = ensureFileRecord(fileMap, result.path, result.content, null);
+          for (const ind of result.indicators) record.indicators.add(ind);
+          if (result.provider) record.providers.add(result.provider);
+          if (result.framework) record.frameworks.add(result.framework);
+          if (result.provider) providersDetected.add(result.provider);
+          if (result.framework) frameworksDetected.add(result.framework);
+        }
+
+        // Cleanup
+        await rm(localPath, { recursive: true, force: true });
+      } catch {
+        // If local clone fails, continue with whatever we have
+      }
+    }
+
+    // Build candidates
+    const candidates = [];
+    for (const [path, rec] of fileMap.entries()) {
+      const indicators = Array.from(rec.indicators);
+      const provider = Array.from(rec.providers)[0] || null;
+      const framework = Array.from(rec.frameworks)[0] || null;
+      const snippet = buildSnippet(rec.content, indicators);
+      const score = scoreCandidate({ content: rec.content, indicators, provider, framework });
+
+      candidates.push({
+        filePath: path,
+        provider,
+        framework,
+        indicators,
+        snippet,
+        score,
+      });
+    }
+
+    candidates.sort((a, b) => b.score - a.score);
+
+    return {
+      success: true,
+      repo: { owner: repoInfo.owner, repo: repoInfo.repo, branch: branch || null },
+      providersDetected: Array.from(providersDetected),
+      frameworksDetected: Array.from(frameworksDetected),
+      candidates,
+      meta: {
+        strategiesUsed: usedStrategies,
+        queriesTried: queries.map(q => q.name),
+        fallbackTried: (!usedLocalClone && fileMap.size === 0) ? fallbackQueries.map(q => q.name) : [],
+        usedLocalClone,
+      }
+    };
+  } catch (error) {
+    return { success: false, error: error.message, stack: error.stack };
+  }
+};
+
+// ————— Helpers —————
+
+const parseRepositoryUrl = (repositoryUrl) => {
+  try {
+    const patterns = [
+      /github\.com\/([^/]+)\/([^/]+?)(?:\.git)?(?:\/.*)?$/,
+      /^([^/]+)\/([^/]+)$/
+    ];
+    for (const pattern of patterns) {
+      const match = repositoryUrl.match(pattern);
+      if (match) {
+        return { owner: match[1], repo: match[2].replace('.git', '') };
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const ensureFileRecord = (map, path, content, sha) => {
+  if (!map.has(path)) {
+    map.set(path, {
+      path,
+      content,
+      sha,
+      indicators: new Set(),
+      providers: new Set(),
+      frameworks: new Set(),
+    });
+  }
+  return map.get(path);
+};
+
+const buildSnippet = (content, indicators) => {
+  if (!content) return '';
+  const lines = content.split('\n');
+  let matchIdx = -1;
+  for (const ind of indicators) {
+    matchIdx = lines.findIndex(l => l.toLowerCase().includes(ind.toLowerCase()));
+    if (matchIdx !== -1) break;
+  }
+  if (matchIdx === -1) {
+    // fallback: look for common prompt phrases
+    matchIdx = lines.findIndex(l => /you are|your task is|messages\s*:\s*\[/i.test(l));
+  }
+  const start = Math.max(0, matchIdx - 5);
+  const end = Math.min(lines.length, matchIdx + 5);
+  return lines.slice(start, end).join('\n');
+};
+
+const scoreCandidate = ({ content, indicators, provider, framework }) => {
+  let score = 0;
+  // weights
+  const weightIndicator = 1.0;
+  const weightProvider = 2.0;
+  const weightFramework = 1.5;
+  const weightPromptPhrases = 1.25;
+
+  score += indicators.length * weightIndicator;
+  if (provider) score += weightProvider;
+  if (framework) score += weightFramework;
+  if (/\byou are\b|\byour task is\b|messages\s*:\s*\[|role\s*:\s*['"]system['"]/i.test(content || '')) {
+    score += weightPromptPhrases;
+  }
+  return Number(score.toFixed(2));
+};
+
+const buildHighSignalQueries = () => {
+  // Each query is intentionally short and provider/framework focused to avoid 422 errors
+  return [
+    // Providers
+    { name: 'openai_import', query: "import OpenAI from 'openai'", provider: 'openai' },
+    { name: 'openai_chat_create', query: 'chat.completions.create(', provider: 'openai', matchHint: 'chat.completions.create(' },
+    // Python OpenAI
+    { name: 'py_openai_import', query: 'import openai', provider: 'openai', matchHint: 'import openai' },
+    { name: 'py_openai_chat_create', query: 'openai.ChatCompletion.create(', provider: 'openai', matchHint: 'ChatCompletion.create(' },
+    { name: 'py_openai_client_chat', query: 'client.chat.completions.create(', provider: 'openai', matchHint: 'chat.completions.create(' },
+    { name: 'anthropic_import', query: "@anthropic-ai/sdk", provider: 'anthropic' },
+    { name: 'anthropic_messages', query: 'messages.create(', provider: 'anthropic', matchHint: 'messages.create(' },
+    // Python Anthropic
+    { name: 'py_anthropic_import', query: 'import anthropic', provider: 'anthropic', matchHint: 'import anthropic' },
+    { name: 'py_anthropic_from', query: 'from anthropic import', provider: 'anthropic', matchHint: 'from anthropic import' },
+    { name: 'py_anthropic_messages', query: 'client.messages.create(', provider: 'anthropic', matchHint: 'messages.create(' },
+    { name: 'google_gemini_import', query: "@google/generative-ai", provider: 'google' },
+    // Python Google Gemini / Vertex
+    { name: 'py_google_gemini_import', query: 'import google.generativeai as', provider: 'google', matchHint: 'google.generativeai' },
+    { name: 'py_vertex_generative_model', query: 'from vertexai.generative_models import', provider: 'google', matchHint: 'vertexai' },
+    { name: 'azure_openai', query: "@azure/openai", provider: 'azure-openai' },
+    // Python Azure OpenAI
+    { name: 'py_azure_openai_import', query: 'from azure.ai.openai import', provider: 'azure-openai', matchHint: 'azure.ai.openai' },
+    { name: 'py_azure_openai_client', query: 'OpenAIClient(', provider: 'azure-openai', matchHint: 'OpenAIClient(' },
+    { name: 'aws_bedrock', query: "@aws-sdk/client-bedrock-runtime", provider: 'bedrock' },
+    // Python Bedrock
+    { name: 'py_bedrock_boto3', query: "client('bedrock-runtime')", provider: 'bedrock', matchHint: 'bedrock-runtime' },
+    { name: 'py_boto3_import', query: 'import boto3', provider: 'bedrock', matchHint: 'boto3' },
+    { name: 'cohere', query: 'from "cohere"', provider: 'cohere' },
+    // Python Cohere
+    { name: 'py_cohere_import', query: 'import cohere', provider: 'cohere', matchHint: 'import cohere' },
+    { name: 'py_cohere_client', query: 'cohere.Client(', provider: 'cohere', matchHint: 'cohere.Client(' },
+    { name: 'groq', query: 'from "groq-sdk"', provider: 'groq' },
+    // Python Groq
+    { name: 'py_groq_import', query: 'from groq import Groq', provider: 'groq', matchHint: 'from groq import Groq' },
+    { name: 'mistral', query: 'from "@mistralai/mistralai"', provider: 'mistral' },
+    // Python Mistral
+    { name: 'py_mistral_import', query: 'from mistralai', provider: 'mistral', matchHint: 'from mistralai' },
+    { name: 'py_mistral_client', query: 'MistralClient(', provider: 'mistral', matchHint: 'MistralClient(' },
+    { name: 'ollama', query: 'from "ollama"', provider: 'ollama' },
+    // Python Ollama
+    { name: 'py_ollama_import', query: 'import ollama', provider: 'ollama', matchHint: 'import ollama' },
+
+    // Frameworks
+    { name: 'langchain_import', query: 'from "langchain"', framework: 'langchain' },
+    { name: 'langchain_prompttemplate', query: 'PromptTemplate', framework: 'langchain' },
+    // Python LangChain
+    { name: 'py_langchain_import', query: 'from langchain', framework: 'langchain', matchHint: 'from langchain' },
+    { name: 'py_langchain_prompts', query: 'from langchain.prompts import', framework: 'langchain', matchHint: 'langchain.prompts' },
+    { name: 'py_langchain_chatprompt', query: 'ChatPromptTemplate', framework: 'langchain', matchHint: 'ChatPromptTemplate' },
+    { name: 'vercel_ai_sdk', query: " from 'ai' ", framework: 'ai-sdk' },
+    { name: 'vercel_generate_text', query: 'generateText(', framework: 'ai-sdk', matchHint: 'generateText(' },
+    { name: 'llamaindex_import', query: 'from "llamaindex"', framework: 'llamaindex' },
+    // Python LlamaIndex
+    { name: 'py_llamaindex_import', query: 'from llama_index import', framework: 'llamaindex', matchHint: 'from llama_index' },
+    { name: 'py_llamaindex_prompttemplate', query: 'PromptTemplate', framework: 'llamaindex', matchHint: 'PromptTemplate' },
+
+    // Prompt shapes
+    { name: 'messages_array', query: 'messages: [', matchHint: 'messages' },
+    { name: 'role_system_single', query: "role: 'system'", matchHint: 'role' },
+    { name: 'role_system_double', query: 'role: "system"', matchHint: 'role' },
+    { name: 'systemPrompt_var', query: 'systemPrompt', matchHint: 'systemPrompt' },
+    { name: 'promptTemplate_var', query: 'promptTemplate', matchHint: 'promptTemplate' },
+    { name: 'basePrompt_var', query: 'basePrompt', matchHint: 'basePrompt' },
+    // Python prompt shapes
+    { name: 'py_messages_list', query: 'messages = [', matchHint: 'messages' },
+    { name: 'py_role_system_single', query: "'role': 'system'", matchHint: 'role' },
+    { name: 'py_role_system_double', query: '"role": "system"', matchHint: 'role' },
+    { name: 'py_system_prompt_var', query: 'system_prompt', matchHint: 'system_prompt' },
+    { name: 'py_prompt_template_var', query: 'prompt_template', matchHint: 'prompt_template' },
+    { name: 'py_base_prompt_var', query: 'base_prompt', matchHint: 'base_prompt' },
+  ];
+};
+
+const buildFallbackQueries = () => {
+  return [
+    { name: 'fallback_messages', query: 'messages: [' },
+    { name: 'fallback_role_system', query: 'role: "system"' },
+    { name: 'fallback_role_system_single', query: "role: 'system'" },
+    { name: 'fallback_you_are', query: 'You are' },
+    { name: 'fallback_prompt_template', query: 'PromptTemplate' },
+    // Python fallbacks
+    { name: 'fallback_py_messages', query: 'messages = [' },
+    { name: 'fallback_py_role_system_single', query: "'role': 'system'" },
+    { name: 'fallback_py_role_system_double', query: '"role": "system"' },
+  ];
+};
+
+const extractProbe = (searchQuery) => {
+  // Try to use a simple token from the search query as an inclusion check in file content
+  const tokens = (searchQuery || '').replace(/\s+/g, ' ').trim().split(' ');
+  return tokens.find(t => /[a-zA-Z]/.test(t)) || searchQuery;
+};
+
+export default {
+  assessRepositoryAI,
+  generateComprehensiveAssessmentMarkdown,
+  buildAssessmentFromFilesMarkdown,
+};
+
+// —— Local clone utilities ——
+
+async function getDefaultBranchName(githubClient, owner, repo) {
+  try {
+    const info = await githubClient.getRepository(owner, repo);
+    return info.default_branch || 'main';
+  } catch {
+    return 'main';
+  }
+}
+
+async function cloneRepoShallow({ owner, repo, token, branch }) {
+  const tmpBase = tmpdir();
+  const dir = await mkdtemp(path.join(tmpBase, `handit-ai-scan-`));
+  // Use GitHub App installation token for HTTPS clone
+  // URL format: https://x-access-token:TOKEN@github.com/owner/repo.git
+  const safeUrl = `https://x-access-token:${encodeURIComponent(token)}@github.com/${owner}/${repo}.git`;
+
+  await runCmd('git', ['clone', '--depth', '1', '--branch', branch, safeUrl, dir], { cwd: dir });
+  return dir;
+}
+
+async function runCmd(cmd, args, { cwd } = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, { cwd, stdio: 'ignore' });
+    child.on('error', reject);
+    child.on('exit', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`${cmd} ${args.join(' ')} exited with code ${code}`));
+    });
+  });
+}
+
+async function scanLocalRepository(baseDir, { queries, fallbackQueries }) {
+  const files = await listFilesRecursive(baseDir, 0, 5);
+  const results = [];
+  for (const filePath of files) {
+    if (!isSearchableFileLocal(filePath)) continue;
+    try {
+      const content = await fsReadFile(filePath, 'utf-8');
+      const indicators = new Set();
+      let provider = null;
+      let framework = null;
+
+      for (const q of queries) {
+        const probe = q.matchHint || q.query;
+        if (probe && content.includes(probe)) {
+          indicators.add(q.name);
+          if (q.provider && !provider) provider = q.provider;
+          if (q.framework && !framework) framework = q.framework;
+        }
+      }
+      if (indicators.size === 0) {
+        for (const fq of fallbackQueries) {
+          if (content.includes(fq.query)) indicators.add(fq.name);
+        }
+      }
+      if (indicators.size > 0) {
+        results.push({
+          path: path.relative(baseDir, filePath),
+          content,
+          indicators: Array.from(indicators),
+          provider,
+          framework,
+        });
+      }
+    } catch {
+      // ignore read errors
+    }
+  }
+  return results;
+}
+
+async function listFilesRecursive(dir, depth, maxDepth) {
+  const collected = [];
+  if (depth > maxDepth) return collected;
+  let entries;
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch {
+    return collected;
+  }
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (!isSearchableDirectoryLocal(entry.name)) continue;
+      const sub = await listFilesRecursive(full, depth + 1, maxDepth);
+      collected.push(...sub);
+    } else if (entry.isFile()) {
+      collected.push(full);
+    }
+  }
+  return collected;
+}
+
+function isSearchableDirectoryLocal(name) {
+  const skip = new Set(['.git', 'node_modules', 'dist', 'build', 'coverage', '.next', '__pycache__', 'vendor']);
+  return !skip.has(name.toLowerCase());
+}
+
+function isSearchableFileLocal(filename) {
+  const searchableExtensions = ['.js', '.ts', '.jsx', '.tsx', '.py', '.java', '.go', '.php', '.rb', '.cs', '.cpp', '.c', '.h', '.json', '.yaml', '.yml', '.md', '.txt'];
+  const idx = filename.lastIndexOf('.');
+  if (idx === -1) return false;
+  const extension = filename.toLowerCase().substring(idx);
+  return searchableExtensions.includes(extension);
+}
+
+// —— AI-generated comprehensive assessment ——
+
+export async function generateComprehensiveAssessmentMarkdown({ repoOwner, repoName, providersDetected = [], frameworksDetected = [], candidates = [] }) {
+  const topCandidates = candidates.slice(0, 30).map(c => ({
+    filePath: c.filePath,
+    provider: c.provider,
+    framework: c.framework,
+    indicators: c.indicators,
+    score: c.score,
+    snippet: (c.snippet || '').slice(0, 2000),
+  }));
+
+  const messages = [
+    {
+      role: 'system',
+      content: 'You are a senior AI reliability engineer at handit.ai. You analyze repositories to assess LLM usage, prompt hygiene, and risks. Provide actionable, concise recommendations. Output clean Markdown only.'
+    },
+    {
+      role: 'user',
+      content: [
+        `Repository: ${repoOwner}/${repoName}`,
+        `Providers detected: ${providersDetected.join(', ') || 'none'}`,
+        `Frameworks detected: ${frameworksDetected.join(', ') || 'none'}`,
+        '',
+        'Top Prompt Candidates (path, provider, framework, indicators, score, snippet):',
+        '```json',
+        JSON.stringify(topCandidates, null, 2),
+        '```',
+        '',
+        'Please generate a single Markdown document with the following sections:',
+        '- Title: AI Assessment by handit.ai',
+        '- Overview (brief findings summary)',
+        '- Detected Stack (providers/frameworks with brief notes)',
+        '- Prompt Inventory (compact table: file, provider, framework, score)',
+        '- Risks & Issues (numbered list with severity: High/Med/Low)',
+        '- Improvements & Recommendations (prioritized checklist)',
+        '- Prompt Hygiene Checklist (determinism, inputs/outputs, safety, red teaming, logging)',
+        '- Next Steps (short, actionable)',
+        '',
+        'Keep it concise and focused. Use bullet points. Do not invent files. Base on provided data.'
+      ].join('\n')
+    }
+  ];
+
+  const token = process.env.OPENAI_API_KEY;
+  const completion = await generateAIResponse({
+    messages,
+    model: 'gpt-4o',
+    provider: 'OpenAI',
+    token,
+    temperature: 0.2,
+  });
+
+  const md = completion.text || completion.choices?.[0]?.message?.content || '# AI Assessment by handit.ai\n\n(No content)';
+  return md;
+}
+
+// Build assessment using exact file contents (deeper prompt extraction)
+export async function buildAssessmentFromFilesMarkdown({ repoOwner, repoName, providersDetected = [], frameworksDetected = [], files = [] }) {
+  const extracted = [];
+  for (const file of files) {
+    const prompts = extractPromptsFromContent(file.content || '');
+    if (prompts.length > 0) {
+      extracted.push({
+        filePath: file.path,
+        prompts: prompts.map(p => ({
+          type: p.type,
+          role: p.role || null,
+          model: p.model || null,
+          variables: p.variables || [],
+          text: p.text.length > 4000 ? p.text.slice(0, 4000) + '…' : p.text,
+          length: p.text.length,
+        }))
+      });
+    }
+  }
+
+  const messages = [
+    {
+      role: 'system',
+      content: 'You are a senior AI reliability engineer at handit.ai. Perform an in-depth audit of prompts and LLM usage. Identify concrete risks (jailbreak susceptibility, prompt injection vectors, PII leakage, bias, safety gaps), determinism issues, missing output schemas, and improvement opportunities. Reference specific files/prompts. Output clean, well-structured Markdown only.'
+    },
+    {
+      role: 'user',
+      content: [
+        `Repository: ${repoOwner}/${repoName}`,
+        `Providers detected: ${providersDetected.join(', ') || 'none'}`,
+        `Frameworks detected: ${frameworksDetected.join(', ') || 'none'}`,
+        '',
+        'Extracted prompts (per file):',
+        '```json',
+        JSON.stringify(extracted, null, 2),
+        '```',
+        '',
+        'Produce ONE Markdown report with sections:',
+        '## Overview — synthesis of key findings',
+        '## Detected Stack — providers/frameworks and usage notes',
+        '## Prompt Inventory — table listing: file, type, role, chars, variables',
+        '## Deep Findings — for each prompt, list issues (severity High/Med/Low) with rationales and code-aware recommendations',
+        '## Actionable Improvements — prioritized checklist (with examples/snippets)',
+        '## Hygiene & Safety Checklist — determinism, input validation, schemas, logging, red teaming',
+        'Keep it specific and non-generic; base strictly on provided prompts.'
+      ].join('\n')
+    }
+  ];
+
+  const token = process.env.OPENAI_API_KEY;
+  const completion = await generateAIResponse({
+    messages,
+    model: 'gpt-4o',
+    provider: 'OpenAI',
+    token,
+    temperature: 0.2,
+  });
+
+  const md = completion.text || completion.choices?.[0]?.message?.content || '# AI Assessment by handit.ai\n\n(No content)';
+  return md;
+}
+
+// Heuristic prompt extractors for JS/TS/Python
+function extractPromptsFromContent(content) {
+  const prompts = [];
+  if (!content) return prompts;
+
+  // Common model extraction
+  const modelMatches = Array.from(content.matchAll(/model\s*:\s*['"]([^'"\n]+)['"]/g));
+  const modelName = modelMatches?.[0]?.[1] || null;
+
+  // JS/TS: messages array with role/content
+  const jsMessages = Array.from(content.matchAll(/role\s*:\s*['"](system|user|assistant)['"]\s*,\s*content\s*:\s*([`'"])([\s\S]*?)\2/gi));
+  for (const m of jsMessages) {
+    prompts.push({ type: 'messages', role: m[1], text: m[3], model: modelName, variables: extractVariables(m[3]) });
+  }
+
+  // JS/TS: systemPrompt/basePrompt variables
+  const jsVars = Array.from(content.matchAll(/(systemPrompt|basePrompt|promptTemplate|instructions)\s*=\s*([`'"])([\s\S]*?)\2/gi));
+  for (const v of jsVars) {
+    prompts.push({ type: 'variable', role: inferRoleFromName(v[1]), text: v[3], model: modelName, variables: extractVariables(v[3]) });
+  }
+
+  // LangChain JS: template field
+  const jsTemplates = Array.from(content.matchAll(/template\s*:\s*([`'"])([\s\S]*?)\1/gi));
+  for (const t of jsTemplates) {
+    prompts.push({ type: 'template', role: null, text: t[2], model: modelName, variables: extractVariables(t[2]) });
+  }
+
+  // Python: messages list entries
+  const pyMessages = Array.from(content.matchAll(/['"]role['"]\s*:\s*['"](system|user|assistant)['"].{0,200}?['"]content['"]\s*:\s*("""|'''|['"])([\s\S]*?)\2/gi));
+  for (const pm of pyMessages) {
+    prompts.push({ type: 'messages', role: pm[1], text: pm[3], model: modelName, variables: extractVariables(pm[3]) });
+  }
+
+  // Python: system_prompt/base_prompt style
+  const pyVars = Array.from(content.matchAll(/(system_prompt|base_prompt|prompt_template|instructions)\s*=\s*("""|'''|['"])([\s\S]*?)\2/gi));
+  for (const pv of pyVars) {
+    prompts.push({ type: 'variable', role: inferRoleFromName(pv[1]), text: pv[3], model: modelName, variables: extractVariables(pv[3]) });
+  }
+
+  return prompts;
+}
+
+function extractVariables(text) {
+  const vars = new Set();
+  // JS template literals
+  for (const m of text.matchAll(/\$\{([^}]+)\}/g)) vars.add(m[1].trim());
+  // Mustache-style
+  for (const m of text.matchAll(/\{\{\s*([^}\s]+)\s*\}\}/g)) vars.add(m[1].trim());
+  // Python f-string style {var}
+  for (const m of text.matchAll(/\{([^}]+)\}/g)) {
+    const candidate = m[1].trim();
+    if (!candidate.includes(':')) vars.add(candidate);
+  }
+  return Array.from(vars).slice(0, 20);
+}
+
+function inferRoleFromName(name) {
+  if (!name) return null;
+  if (name.toLowerCase().includes('system')) return 'system';
+  if (name.toLowerCase().includes('user')) return 'user';
+  return null;
+}
+
