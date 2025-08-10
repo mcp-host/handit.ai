@@ -26,7 +26,17 @@ import { spawn } from 'child_process';
  * @param {string|null} [params.branch] - Optional branch to prefer for context (best-effort)
  * @returns {Promise<Object>} assessment result
  */
-export const assessRepositoryAI = async ({ repoUrl, companyId, models, branch = null, preferLocalClone = false, hintFilePath = null, hintFunctionName = null, executionTree = null, useHintsFlow = true }) => {
+export const assessRepositoryAI = async ({
+  repoUrl,
+  companyId,
+  models,
+  branch = null,
+  preferLocalClone = false,
+  hintFilePath = null,
+  hintFunctionName = null,
+  executionTree = null,
+  useHintsFlow = true,
+}) => {
   if (!repoUrl) {
     return { success: false, error: 'repoUrl is required' };
   }
@@ -51,21 +61,33 @@ export const assessRepositoryAI = async ({ repoUrl, companyId, models, branch = 
 
     console.log('🔍 Company:', company);
 
-    const githubIntegration = await models.GitHubIntegration.findOne({ where: { companyId } });
+    const githubIntegration = await models.GitHubIntegration.findOne({
+      where: { companyId },
+    });
     console.log('🔍 GitHub Integration:', githubIntegration);
     if (!githubIntegration || !githubIntegration.isConfigured()) {
-      return { success: false, error: 'GitHub integration is not configured for this company' };
+      return {
+        success: false,
+        error: 'GitHub integration is not configured for this company',
+      };
     }
 
     const token = await githubIntegration.getInstallationAccessToken();
     if (!token) {
-      return { success: false, error: 'Unable to obtain GitHub installation token' };
+      return {
+        success: false,
+        error: 'Unable to obtain GitHub installation token',
+      };
     }
 
     const githubClient = new GitHubClient(token);
 
     // If hints were provided, run the specialized hints-driven flow
-    const hasHints = Boolean((hintFilePath && typeof hintFilePath === 'string') || (hintFunctionName && typeof hintFunctionName === 'string') || (executionTree && typeof executionTree === 'object'));
+    const hasHints = Boolean(
+      (hintFilePath && typeof hintFilePath === 'string') ||
+        (hintFunctionName && typeof hintFunctionName === 'string') ||
+        (executionTree && typeof executionTree === 'object')
+    );
     if (useHintsFlow && hasHints) {
       try {
         const hinted = await assessRepositoryWithHintsFlow({
@@ -81,7 +103,10 @@ export const assessRepositoryAI = async ({ repoUrl, companyId, models, branch = 
       } catch (e) {
         // Fall through to default heuristic scan if hints flow fails
         // but keep a breadcrumb in meta for debugging
-        console.log('⚠️  Hints flow failed, falling back to heuristic scan:', e.message);
+        console.log(
+          '⚠️  Hints flow failed, falling back to heuristic scan:',
+          e.message
+        );
       }
     }
 
@@ -101,15 +126,37 @@ export const assessRepositoryAI = async ({ repoUrl, companyId, models, branch = 
       for (const q of queries) {
         try {
           usedStrategies.push(`search:${q.name}`);
-          const results = await githubClient.searchCode(repoInfo.owner, repoInfo.repo, q.query);
+          const results = await githubClient.searchCode(
+            repoInfo.owner,
+            repoInfo.repo,
+            q.query
+          );
           for (const item of results.items || []) {
             try {
-              const file = await githubClient.getContent(repoInfo.owner, repoInfo.repo, item.path, branch || undefined);
+              const file = await githubClient.getContent(
+                repoInfo.owner,
+                repoInfo.repo,
+                item.path,
+                branch || undefined
+              );
               if (!file || !file.content) continue;
-              const content = Buffer.from(file.content, 'base64').toString('utf-8');
-              if (!content || !content.includes(q.matchHint || q.queryFragment || extractProbe(q.query))) continue;
+              const content = Buffer.from(file.content, 'base64').toString(
+                'utf-8'
+              );
+              if (
+                !content ||
+                !content.includes(
+                  q.matchHint || q.queryFragment || extractProbe(q.query)
+                )
+              )
+                continue;
 
-              const record = ensureFileRecord(fileMap, item.path, content, file.sha);
+              const record = ensureFileRecord(
+                fileMap,
+                item.path,
+                content,
+                file.sha
+              );
               if (q.provider) {
                 record.providers.add(q.provider);
                 providersDetected.add(q.provider);
@@ -152,15 +199,32 @@ export const assessRepositoryAI = async ({ repoUrl, companyId, models, branch = 
     // If still empty or local clone preferred, try local clone scan
     if (fileMap.size === 0 || preferLocalClone) {
       try {
-        const defaultBranch = await getDefaultBranchName(githubClient, repoInfo.owner, repoInfo.repo);
+        const defaultBranch = await getDefaultBranchName(
+          githubClient,
+          repoInfo.owner,
+          repoInfo.repo
+        );
         const branchToUse = branch || defaultBranch;
-        const localPath = await cloneRepoShallow({ owner: repoInfo.owner, repo: repoInfo.repo, token, branch: branchToUse });
+        const localPath = await cloneRepoShallow({
+          owner: repoInfo.owner,
+          repo: repoInfo.repo,
+          token,
+          branch: branchToUse,
+        });
         usedLocalClone = true;
         usedStrategies.push(`local-clone:${branchToUse}`);
 
-        const localResults = await scanLocalRepository(localPath, { queries, fallbackQueries });
+        const localResults = await scanLocalRepository(localPath, {
+          queries,
+          fallbackQueries,
+        });
         for (const result of localResults) {
-          const record = ensureFileRecord(fileMap, result.path, result.content, null);
+          const record = ensureFileRecord(
+            fileMap,
+            result.path,
+            result.content,
+            null
+          );
           for (const ind of result.indicators) record.indicators.add(ind);
           if (result.provider) record.providers.add(result.provider);
           if (result.framework) record.frameworks.add(result.framework);
@@ -182,7 +246,12 @@ export const assessRepositoryAI = async ({ repoUrl, companyId, models, branch = 
       const provider = Array.from(rec.providers)[0] || null;
       const framework = Array.from(rec.frameworks)[0] || null;
       const snippet = buildSnippet(rec.content, indicators);
-      const score = scoreCandidate({ content: rec.content, indicators, provider, framework });
+      const score = scoreCandidate({
+        content: rec.content,
+        indicators,
+        provider,
+        framework,
+      });
 
       candidates.push({
         filePath: path,
@@ -198,16 +267,23 @@ export const assessRepositoryAI = async ({ repoUrl, companyId, models, branch = 
 
     return {
       success: true,
-      repo: { owner: repoInfo.owner, repo: repoInfo.repo, branch: branch || null },
+      repo: {
+        owner: repoInfo.owner,
+        repo: repoInfo.repo,
+        branch: branch || null,
+      },
       providersDetected: Array.from(providersDetected),
       frameworksDetected: Array.from(frameworksDetected),
       candidates,
       meta: {
         strategiesUsed: usedStrategies,
-        queriesTried: queries.map(q => q.name),
-        fallbackTried: (!usedLocalClone && fileMap.size === 0) ? fallbackQueries.map(q => q.name) : [],
+        queriesTried: queries.map((q) => q.name),
+        fallbackTried:
+          !usedLocalClone && fileMap.size === 0
+            ? fallbackQueries.map((q) => q.name)
+            : [],
         usedLocalClone,
-      }
+      },
     };
   } catch (error) {
     return { success: false, error: error.message, stack: error.stack };
@@ -220,7 +296,7 @@ const parseRepositoryUrl = (repositoryUrl) => {
   try {
     const patterns = [
       /github\.com\/([^/]+)\/([^/]+?)(?:\.git)?(?:\/.*)?$/,
-      /^([^/]+)\/([^/]+)$/
+      /^([^/]+)\/([^/]+)$/,
     ];
     for (const pattern of patterns) {
       const match = repositoryUrl.match(pattern);
@@ -253,12 +329,16 @@ const buildSnippet = (content, indicators) => {
   const lines = content.split('\n');
   let matchIdx = -1;
   for (const ind of indicators) {
-    matchIdx = lines.findIndex(l => l.toLowerCase().includes(ind.toLowerCase()));
+    matchIdx = lines.findIndex((l) =>
+      l.toLowerCase().includes(ind.toLowerCase())
+    );
     if (matchIdx !== -1) break;
   }
   if (matchIdx === -1) {
     // fallback: look for common prompt phrases
-    matchIdx = lines.findIndex(l => /you are|your task is|messages\s*:\s*\[/i.test(l));
+    matchIdx = lines.findIndex((l) =>
+      /you are|your task is|messages\s*:\s*\[/i.test(l)
+    );
   }
   const start = Math.max(0, matchIdx - 5);
   const end = Math.min(lines.length, matchIdx + 5);
@@ -276,7 +356,11 @@ const scoreCandidate = ({ content, indicators, provider, framework }) => {
   score += indicators.length * weightIndicator;
   if (provider) score += weightProvider;
   if (framework) score += weightFramework;
-  if (/\byou are\b|\byour task is\b|messages\s*:\s*\[|role\s*:\s*['"]system['"]/i.test(content || '')) {
+  if (
+    /\byou are\b|\byour task is\b|messages\s*:\s*\[|role\s*:\s*['"]system['"]/i.test(
+      content || ''
+    )
+  ) {
     score += weightPromptPhrases;
   }
   return Number(score.toFixed(2));
@@ -286,73 +370,263 @@ const buildHighSignalQueries = () => {
   // Each query is intentionally short and provider/framework focused to avoid 422 errors
   return [
     // Providers
-    { name: 'openai_import', query: "import OpenAI from 'openai'", provider: 'openai' },
-    { name: 'openai_chat_create', query: 'chat.completions.create(', provider: 'openai', matchHint: 'chat.completions.create(' },
+    {
+      name: 'openai_import',
+      query: "import OpenAI from 'openai'",
+      provider: 'openai',
+    },
+    {
+      name: 'openai_chat_create',
+      query: 'chat.completions.create(',
+      provider: 'openai',
+      matchHint: 'chat.completions.create(',
+    },
     // Python OpenAI
-    { name: 'py_openai_import', query: 'import openai', provider: 'openai', matchHint: 'import openai' },
-    { name: 'py_openai_chat_create', query: 'openai.ChatCompletion.create(', provider: 'openai', matchHint: 'ChatCompletion.create(' },
-    { name: 'py_openai_client_chat', query: 'client.chat.completions.create(', provider: 'openai', matchHint: 'chat.completions.create(' },
-    { name: 'anthropic_import', query: "@anthropic-ai/sdk", provider: 'anthropic' },
-    { name: 'anthropic_messages', query: 'messages.create(', provider: 'anthropic', matchHint: 'messages.create(' },
+    {
+      name: 'py_openai_import',
+      query: 'import openai',
+      provider: 'openai',
+      matchHint: 'import openai',
+    },
+    {
+      name: 'py_openai_chat_create',
+      query: 'openai.ChatCompletion.create(',
+      provider: 'openai',
+      matchHint: 'ChatCompletion.create(',
+    },
+    {
+      name: 'py_openai_client_chat',
+      query: 'client.chat.completions.create(',
+      provider: 'openai',
+      matchHint: 'chat.completions.create(',
+    },
+    {
+      name: 'anthropic_import',
+      query: '@anthropic-ai/sdk',
+      provider: 'anthropic',
+    },
+    {
+      name: 'anthropic_messages',
+      query: 'messages.create(',
+      provider: 'anthropic',
+      matchHint: 'messages.create(',
+    },
     // Python Anthropic
-    { name: 'py_anthropic_import', query: 'import anthropic', provider: 'anthropic', matchHint: 'import anthropic' },
-    { name: 'py_anthropic_from', query: 'from anthropic import', provider: 'anthropic', matchHint: 'from anthropic import' },
-    { name: 'py_anthropic_messages', query: 'client.messages.create(', provider: 'anthropic', matchHint: 'messages.create(' },
-    { name: 'google_gemini_import', query: "@google/generative-ai", provider: 'google' },
+    {
+      name: 'py_anthropic_import',
+      query: 'import anthropic',
+      provider: 'anthropic',
+      matchHint: 'import anthropic',
+    },
+    {
+      name: 'py_anthropic_from',
+      query: 'from anthropic import',
+      provider: 'anthropic',
+      matchHint: 'from anthropic import',
+    },
+    {
+      name: 'py_anthropic_messages',
+      query: 'client.messages.create(',
+      provider: 'anthropic',
+      matchHint: 'messages.create(',
+    },
+    {
+      name: 'google_gemini_import',
+      query: '@google/generative-ai',
+      provider: 'google',
+    },
     // Python Google Gemini / Vertex
-    { name: 'py_google_gemini_import', query: 'import google.generativeai as', provider: 'google', matchHint: 'google.generativeai' },
-    { name: 'py_vertex_generative_model', query: 'from vertexai.generative_models import', provider: 'google', matchHint: 'vertexai' },
-    { name: 'azure_openai', query: "@azure/openai", provider: 'azure-openai' },
+    {
+      name: 'py_google_gemini_import',
+      query: 'import google.generativeai as',
+      provider: 'google',
+      matchHint: 'google.generativeai',
+    },
+    {
+      name: 'py_vertex_generative_model',
+      query: 'from vertexai.generative_models import',
+      provider: 'google',
+      matchHint: 'vertexai',
+    },
+    { name: 'azure_openai', query: '@azure/openai', provider: 'azure-openai' },
     // Python Azure OpenAI
-    { name: 'py_azure_openai_import', query: 'from azure.ai.openai import', provider: 'azure-openai', matchHint: 'azure.ai.openai' },
-    { name: 'py_azure_openai_client', query: 'OpenAIClient(', provider: 'azure-openai', matchHint: 'OpenAIClient(' },
-    { name: 'aws_bedrock', query: "@aws-sdk/client-bedrock-runtime", provider: 'bedrock' },
+    {
+      name: 'py_azure_openai_import',
+      query: 'from azure.ai.openai import',
+      provider: 'azure-openai',
+      matchHint: 'azure.ai.openai',
+    },
+    {
+      name: 'py_azure_openai_client',
+      query: 'OpenAIClient(',
+      provider: 'azure-openai',
+      matchHint: 'OpenAIClient(',
+    },
+    {
+      name: 'aws_bedrock',
+      query: '@aws-sdk/client-bedrock-runtime',
+      provider: 'bedrock',
+    },
     // Python Bedrock
-    { name: 'py_bedrock_boto3', query: "client('bedrock-runtime')", provider: 'bedrock', matchHint: 'bedrock-runtime' },
-    { name: 'py_boto3_import', query: 'import boto3', provider: 'bedrock', matchHint: 'boto3' },
+    {
+      name: 'py_bedrock_boto3',
+      query: "client('bedrock-runtime')",
+      provider: 'bedrock',
+      matchHint: 'bedrock-runtime',
+    },
+    {
+      name: 'py_boto3_import',
+      query: 'import boto3',
+      provider: 'bedrock',
+      matchHint: 'boto3',
+    },
     { name: 'cohere', query: 'from "cohere"', provider: 'cohere' },
     // Python Cohere
-    { name: 'py_cohere_import', query: 'import cohere', provider: 'cohere', matchHint: 'import cohere' },
-    { name: 'py_cohere_client', query: 'cohere.Client(', provider: 'cohere', matchHint: 'cohere.Client(' },
+    {
+      name: 'py_cohere_import',
+      query: 'import cohere',
+      provider: 'cohere',
+      matchHint: 'import cohere',
+    },
+    {
+      name: 'py_cohere_client',
+      query: 'cohere.Client(',
+      provider: 'cohere',
+      matchHint: 'cohere.Client(',
+    },
     { name: 'groq', query: 'from "groq-sdk"', provider: 'groq' },
     // Python Groq
-    { name: 'py_groq_import', query: 'from groq import Groq', provider: 'groq', matchHint: 'from groq import Groq' },
-    { name: 'mistral', query: 'from "@mistralai/mistralai"', provider: 'mistral' },
+    {
+      name: 'py_groq_import',
+      query: 'from groq import Groq',
+      provider: 'groq',
+      matchHint: 'from groq import Groq',
+    },
+    {
+      name: 'mistral',
+      query: 'from "@mistralai/mistralai"',
+      provider: 'mistral',
+    },
     // Python Mistral
-    { name: 'py_mistral_import', query: 'from mistralai', provider: 'mistral', matchHint: 'from mistralai' },
-    { name: 'py_mistral_client', query: 'MistralClient(', provider: 'mistral', matchHint: 'MistralClient(' },
+    {
+      name: 'py_mistral_import',
+      query: 'from mistralai',
+      provider: 'mistral',
+      matchHint: 'from mistralai',
+    },
+    {
+      name: 'py_mistral_client',
+      query: 'MistralClient(',
+      provider: 'mistral',
+      matchHint: 'MistralClient(',
+    },
     { name: 'ollama', query: 'from "ollama"', provider: 'ollama' },
     // Python Ollama
-    { name: 'py_ollama_import', query: 'import ollama', provider: 'ollama', matchHint: 'import ollama' },
+    {
+      name: 'py_ollama_import',
+      query: 'import ollama',
+      provider: 'ollama',
+      matchHint: 'import ollama',
+    },
 
     // Frameworks
-    { name: 'langchain_import', query: 'from "langchain"', framework: 'langchain' },
-    { name: 'langchain_prompttemplate', query: 'PromptTemplate', framework: 'langchain' },
+    {
+      name: 'langchain_import',
+      query: 'from "langchain"',
+      framework: 'langchain',
+    },
+    {
+      name: 'langchain_prompttemplate',
+      query: 'PromptTemplate',
+      framework: 'langchain',
+    },
     // Python LangChain
-    { name: 'py_langchain_import', query: 'from langchain', framework: 'langchain', matchHint: 'from langchain' },
-    { name: 'py_langchain_prompts', query: 'from langchain.prompts import', framework: 'langchain', matchHint: 'langchain.prompts' },
-    { name: 'py_langchain_chatprompt', query: 'ChatPromptTemplate', framework: 'langchain', matchHint: 'ChatPromptTemplate' },
+    {
+      name: 'py_langchain_import',
+      query: 'from langchain',
+      framework: 'langchain',
+      matchHint: 'from langchain',
+    },
+    {
+      name: 'py_langchain_prompts',
+      query: 'from langchain.prompts import',
+      framework: 'langchain',
+      matchHint: 'langchain.prompts',
+    },
+    {
+      name: 'py_langchain_chatprompt',
+      query: 'ChatPromptTemplate',
+      framework: 'langchain',
+      matchHint: 'ChatPromptTemplate',
+    },
     { name: 'vercel_ai_sdk', query: " from 'ai' ", framework: 'ai-sdk' },
-    { name: 'vercel_generate_text', query: 'generateText(', framework: 'ai-sdk', matchHint: 'generateText(' },
-    { name: 'llamaindex_import', query: 'from "llamaindex"', framework: 'llamaindex' },
+    {
+      name: 'vercel_generate_text',
+      query: 'generateText(',
+      framework: 'ai-sdk',
+      matchHint: 'generateText(',
+    },
+    {
+      name: 'llamaindex_import',
+      query: 'from "llamaindex"',
+      framework: 'llamaindex',
+    },
     // Python LlamaIndex
-    { name: 'py_llamaindex_import', query: 'from llama_index import', framework: 'llamaindex', matchHint: 'from llama_index' },
-    { name: 'py_llamaindex_prompttemplate', query: 'PromptTemplate', framework: 'llamaindex', matchHint: 'PromptTemplate' },
+    {
+      name: 'py_llamaindex_import',
+      query: 'from llama_index import',
+      framework: 'llamaindex',
+      matchHint: 'from llama_index',
+    },
+    {
+      name: 'py_llamaindex_prompttemplate',
+      query: 'PromptTemplate',
+      framework: 'llamaindex',
+      matchHint: 'PromptTemplate',
+    },
 
     // Prompt shapes
     { name: 'messages_array', query: 'messages: [', matchHint: 'messages' },
     { name: 'role_system_single', query: "role: 'system'", matchHint: 'role' },
     { name: 'role_system_double', query: 'role: "system"', matchHint: 'role' },
-    { name: 'systemPrompt_var', query: 'systemPrompt', matchHint: 'systemPrompt' },
-    { name: 'promptTemplate_var', query: 'promptTemplate', matchHint: 'promptTemplate' },
+    {
+      name: 'systemPrompt_var',
+      query: 'systemPrompt',
+      matchHint: 'systemPrompt',
+    },
+    {
+      name: 'promptTemplate_var',
+      query: 'promptTemplate',
+      matchHint: 'promptTemplate',
+    },
     { name: 'basePrompt_var', query: 'basePrompt', matchHint: 'basePrompt' },
     // Python prompt shapes
     { name: 'py_messages_list', query: 'messages = [', matchHint: 'messages' },
-    { name: 'py_role_system_single', query: "'role': 'system'", matchHint: 'role' },
-    { name: 'py_role_system_double', query: '"role": "system"', matchHint: 'role' },
-    { name: 'py_system_prompt_var', query: 'system_prompt', matchHint: 'system_prompt' },
-    { name: 'py_prompt_template_var', query: 'prompt_template', matchHint: 'prompt_template' },
-    { name: 'py_base_prompt_var', query: 'base_prompt', matchHint: 'base_prompt' },
+    {
+      name: 'py_role_system_single',
+      query: "'role': 'system'",
+      matchHint: 'role',
+    },
+    {
+      name: 'py_role_system_double',
+      query: '"role": "system"',
+      matchHint: 'role',
+    },
+    {
+      name: 'py_system_prompt_var',
+      query: 'system_prompt',
+      matchHint: 'system_prompt',
+    },
+    {
+      name: 'py_prompt_template_var',
+      query: 'prompt_template',
+      matchHint: 'prompt_template',
+    },
+    {
+      name: 'py_base_prompt_var',
+      query: 'base_prompt',
+      matchHint: 'base_prompt',
+    },
   ];
 };
 
@@ -373,7 +647,7 @@ const buildFallbackQueries = () => {
 const extractProbe = (searchQuery) => {
   // Try to use a simple token from the search query as an inclusion check in file content
   const tokens = (searchQuery || '').replace(/\s+/g, ' ').trim().split(' ');
-  return tokens.find(t => /[a-zA-Z]/.test(t)) || searchQuery;
+  return tokens.find((t) => /[a-zA-Z]/.test(t)) || searchQuery;
 };
 
 export default {
@@ -399,9 +673,15 @@ async function cloneRepoShallow({ owner, repo, token, branch }) {
   const dir = await mkdtemp(path.join(tmpBase, `handit-ai-scan-`));
   // Use GitHub App installation token for HTTPS clone
   // URL format: https://x-access-token:TOKEN@github.com/owner/repo.git
-  const safeUrl = `https://x-access-token:${encodeURIComponent(token)}@github.com/${owner}/${repo}.git`;
+  const safeUrl = `https://x-access-token:${encodeURIComponent(
+    token
+  )}@github.com/${owner}/${repo}.git`;
 
-  await runCmd('git', ['clone', '--depth', '1', '--branch', branch, safeUrl, dir], { cwd: dir });
+  await runCmd(
+    'git',
+    ['clone', '--depth', '1', '--branch', branch, safeUrl, dir],
+    { cwd: dir }
+  );
   return dir;
 }
 
@@ -411,7 +691,8 @@ async function runCmd(cmd, args, { cwd } = {}) {
     child.on('error', reject);
     child.on('exit', (code) => {
       if (code === 0) resolve();
-      else reject(new Error(`${cmd} ${args.join(' ')} exited with code ${code}`));
+      else
+        reject(new Error(`${cmd} ${args.join(' ')} exited with code ${code}`));
     });
   });
 }
@@ -479,12 +760,40 @@ async function listFilesRecursive(dir, depth, maxDepth) {
 }
 
 function isSearchableDirectoryLocal(name) {
-  const skip = new Set(['.git', 'node_modules', 'dist', 'build', 'coverage', '.next', '__pycache__', 'vendor']);
+  const skip = new Set([
+    '.git',
+    'node_modules',
+    'dist',
+    'build',
+    'coverage',
+    '.next',
+    '__pycache__',
+    'vendor',
+  ]);
   return !skip.has(name.toLowerCase());
 }
 
 function isSearchableFileLocal(filename) {
-  const searchableExtensions = ['.js', '.ts', '.jsx', '.tsx', '.py', '.java', '.go', '.php', '.rb', '.cs', '.cpp', '.c', '.h', '.json', '.yaml', '.yml', '.md', '.txt'];
+  const searchableExtensions = [
+    '.js',
+    '.ts',
+    '.jsx',
+    '.tsx',
+    '.py',
+    '.java',
+    '.go',
+    '.php',
+    '.rb',
+    '.cs',
+    '.cpp',
+    '.c',
+    '.h',
+    '.json',
+    '.yaml',
+    '.yml',
+    '.md',
+    '.txt',
+  ];
   const idx = filename.lastIndexOf('.');
   if (idx === -1) return false;
   const extension = filename.toLowerCase().substring(idx);
@@ -493,11 +802,28 @@ function isSearchableFileLocal(filename) {
 
 // —— Hints-driven flow ——
 
-async function assessRepositoryWithHintsFlow({ repoInfo, branch, token, githubClient, hintFilePath, hintFunctionName, executionTree }) {
+async function assessRepositoryWithHintsFlow({
+  repoInfo,
+  branch,
+  token,
+  githubClient,
+  hintFilePath,
+  hintFunctionName,
+  executionTree,
+}) {
   // 1) Determine branch and clone locally to obtain repository structure
-  const defaultBranch = await getDefaultBranchName(githubClient, repoInfo.owner, repoInfo.repo);
+  const defaultBranch = await getDefaultBranchName(
+    githubClient,
+    repoInfo.owner,
+    repoInfo.repo
+  );
   const branchToUse = branch || defaultBranch;
-  const localPath = await cloneRepoShallow({ owner: repoInfo.owner, repo: repoInfo.repo, token, branch: branchToUse });
+  const localPath = await cloneRepoShallow({
+    owner: repoInfo.owner,
+    repo: repoInfo.repo,
+    token,
+    branch: branchToUse,
+  });
   let providersDetected = new Set();
   let frameworksDetected = new Set();
 
@@ -505,7 +831,7 @@ async function assessRepositoryWithHintsFlow({ repoInfo, branch, token, githubCl
     const allFiles = await listFilesRecursive(localPath, 0, 6);
     const relativeFiles = allFiles
       .filter(isSearchableFileLocal)
-      .map(p => path.relative(localPath, p));
+      .map((p) => path.relative(localPath, p));
 
     // 2) Ask LLM to pick candidate files based on hints + repo structure
     const llmCandidates = await pickCandidatesFromHints({
@@ -518,7 +844,11 @@ async function assessRepositoryWithHintsFlow({ repoInfo, branch, token, githubCl
     });
 
     // Always include the hinted file if present
-    const candidateSet = new Set([...(llmCandidates || []), ...(hintFilePath ? [hintFilePath] : []), ...(executionTree ? executionTree.calls.map(e => e.file) : [])]);
+    const candidateSet = new Set([
+      ...(llmCandidates || []),
+      ...(hintFilePath ? [hintFilePath] : []),
+      ...(executionTree ? executionTree.calls.map((e) => e.file) : []),
+    ]);
     console.log('candidateSet', candidateSet);
     const candidates = Array.from(candidateSet).slice(0, 25);
 
@@ -548,8 +878,13 @@ async function assessRepositoryWithHintsFlow({ repoInfo, branch, token, githubCl
     console.log('promptsSelected 1', promptsSelected);
 
     if (promptsSelected.length < 2) {
-      const remainingFiles = candidateFilesWithContent.filter(f => !promptsSelected.some(p => p.filePath === f.path));
-      const llmExtracted = await detectPromptsViaLLM({ files: remainingFiles, maxPrompts: 2 - promptsSelected.length });
+      const remainingFiles = candidateFilesWithContent.filter(
+        (f) => !promptsSelected.some((p) => p.filePath === f.path)
+      );
+      const llmExtracted = await detectPromptsViaLLM({
+        files: remainingFiles,
+        maxPrompts: 2 - promptsSelected.length,
+      });
       for (const p of llmExtracted) {
         if (promptsSelected.length >= 2) break;
         promptsSelected.push(p);
@@ -571,7 +906,7 @@ async function assessRepositoryWithHintsFlow({ repoInfo, branch, token, githubCl
     }
 
     // Build candidates list for parity with heuristic flow
-    const scoredCandidates = candidateFilesWithContent.map(f => ({
+    const scoredCandidates = candidateFilesWithContent.map((f) => ({
       filePath: f.path,
       provider: null,
       framework: null,
@@ -580,35 +915,59 @@ async function assessRepositoryWithHintsFlow({ repoInfo, branch, token, githubCl
       score: 1,
     }));
 
-
     return {
       success: true,
-      repo: { owner: repoInfo.owner, repo: repoInfo.repo, branch: branch || null },
+      repo: {
+        owner: repoInfo.owner,
+        repo: repoInfo.repo,
+        branch: branch || null,
+      },
       providersDetected: Array.from(providersDetected),
       frameworksDetected: Array.from(frameworksDetected),
       candidates: scoredCandidates,
-      selectedFiles: candidateFilesWithContent.filter(f => promptsSelected.some(p => p.filePath === f.path)).slice(0, 2),
+      selectedFiles: candidateFilesWithContent
+        .filter((f) => promptsSelected.some((p) => p.filePath === f.path))
+        .slice(0, 2),
       promptsSelected: promptsSelected.slice(0, 2),
       meta: {
         strategiesUsed: ['hints-flow'],
-        hints: { hintFilePath, hintFunctionName, hasExecutionTree: Boolean(executionTree) },
+        hints: {
+          hintFilePath,
+          hintFunctionName,
+          hasExecutionTree: Boolean(executionTree),
+        },
         candidateCount: candidates.length,
-      }
+      },
     };
   } finally {
     // Cleanup local clone
-    try { await rm(localPath, { recursive: true, force: true }); } catch { /* ignore */ }
+    try {
+      await rm(localPath, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
   }
 }
 
-async function pickCandidatesFromHints({ repoOwner, repoName, hintFilePath, hintFunctionName, executionTree, fileList }) {
+async function pickCandidatesFromHints({
+  repoOwner,
+  repoName,
+  hintFilePath,
+  hintFunctionName,
+  executionTree,
+  fileList,
+}) {
   const limitedList = fileList.slice(0, 5000); // cap size
   const treePreview = limitedList.join('\n');
   const userContent = [
     `Repository: ${repoOwner}/${repoName}`,
     hintFilePath ? `Hint file path: ${hintFilePath}` : null,
     hintFunctionName ? `Hint function: ${hintFunctionName}` : null,
-    executionTree ? `Execution tree JSON (may be partial):\n\n\`\`\`json\n${JSON.stringify(executionTree).slice(0, 4000)}\n\`\`\`` : null,
+    executionTree
+      ? `Execution tree JSON (may be partial):\n\n\`\`\`json\n${JSON.stringify(
+          executionTree
+        ).slice(0, 4000)}\n\`\`\``
+      : null,
     '',
     'Repository file list (relative paths):',
     '```text',
@@ -617,12 +976,96 @@ async function pickCandidatesFromHints({ repoOwner, repoName, hintFilePath, hint
     '',
     'Task: From the above hints and repository structure, list the most likely files containing prompts, constants, configs, or templates related to the hinted agent. Include the hinted file if relevant. Return STRICT JSON only:',
     '{ "candidates": ["path/one", "path/two", ...], "rationale": "short" }',
-    'Limit to 20 candidates, ordered by likelihood.'
-  ].filter(Boolean).join('\n');
+    'Limit to 20 candidates, ordered by likelihood.',
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  const systemContent = `
+  You are a code analysis assistant at handit.ai. Your job is to **select repository files most likely to contain LLM prompts** (system/user templates), prompt-building code, constants/strings used as prompts, configuration that embeds prompts, or setup glue that assembles messages.
+
+You will receive:
+- Repository owner/name
+- Optional hint file path and/or hint function name
+- An execution tree (may be partial/incorrect)
+- A flat repository **file list** (relative paths only)
+
+## What to return
+Return **STRICT JSON** with this exact shape and nothing else:
+'''json
+{ "candidates": ["path/one", "path/two", "..."], "rationale": "short" }
+'''
+Rules:
+- **Only file paths that appear in the provided file list.** No directories, no guesses outside the list.
+- **Order by likelihood** (most likely first).
+- **Between 5 and 20 items.** If fewer than 5 are obvious, add best-guess candidates using the heuristics below.
+- **No extra fields**, no code fences, no comments, no trailing commas.
+
+## How to pick candidates (use all signals)
+Prioritize files by summing the following signals; order by total score (break ties by shorter path and proximity to hints):
+
+### A) Name/Path Heuristics (strong)
+Boost files whose **name or folders** suggest prompts or LLM usage:
+- Filenames including: 'prompt', 'system', 'template', 'message', 'instruction', 'fewshot', 'persona', 'role', 'conversation', 'chain', 'agent', 'tool', 'planner', 'router', 'formatter'.
+- Framework-specific: 'langchain', 'llamaindex', 'semantic-kernel', 'autogen', 'haystack', 'dspy', 'guidance', 'vllm', 'litelm', 'openai', 'anthropic', 'bedrock', 'vertex', 'cohere', 'mistral', 'ollama'.
+- Common dirs: 'prompts/', 'templates/', 'llm/', 'ai/', 'agent/', 'chains/', 'flows/', 'pipelines/', 'playbooks/', 'skills/', 'usecases/', 'config/', 'configs/', 'settings/', 'resources/', 'data/', 'instructions/'.
+- Neighboring files in the **same directory** as the hint file, especially with names above.
+
+### B) Extension Heuristics (moderate)
+Prefer likely text/code containers:
+- Code: '.ts', '.tsx', '.js', '.jsx', '.py', '.go', '.rb', '.java'
+- Data/templates: '.json', '.yml', '.yaml', '.md', '.txt', '.jinja', '.jinja2', '.j2', '.hbs', '.ejs', '.liquid', '.tpl'
+
+### C) Execution-Tree Proximity (moderate)
+- Files directly listed in the execution tree.
+- Files exporting or importing the **hint function** or the **hint file** (by typical co-location or naming).
+- Files in the **same module/feature** path segments as the hint (e.g., 'src/agents/order/…').
+
+### D) Framework/Library Patterns (moderate)
+Favor files likely to define or assemble prompts:
+- LangChain: 'ChatPromptTemplate', 'SystemMessagePromptTemplate', 'load_prompt', 'Runnable*', 'LLMChain'.
+- LlamaIndex: 'PromptTemplate', 'ServiceContext', 'Settings', 'PromptHelper'.
+- Semantic Kernel: 'skills', 'plugins', 'prompts', '.skprompt.txt'.
+- Guidance/DSPy/AutoGen: any '*.jinja', '*.md' templates, “assistant/system/user” role strings.
+- Homegrown: functions like 'buildPrompt', 'getSystemPrompt', 'composeMessages', 'fewShot', 'instructions'.
+
+### E) Config-Embedding (light)
+Configs that often inline prompts:
+- 'config/*', 'configs/*', 'settings/*', '*.config.*', '*.settings.*'
+- '*.json'/'*.yaml' containing model, agent, or tool setup (by name/path hints).
+
+### F) Proximity to Hint (light)
+- If a **hint file path** is provided, include it **if plausibly relevant**.
+- Add siblings with suggestive names (see A).
+
+### G) Exclusions (unless path strongly indicates prompts)
+Down-rank or skip:
+- Build artifacts: 'dist/', 'build/', 'out/', '.next/', 'target/', 'coverage/', 'node_modules/', 'venv/', '.venv/', '.turbo/', '.pytest_cache/'.
+- Tests/mocks/snapshots: '__tests__/', 'tests/', '__mocks__/', '__snapshots__/', '*.spec.*', '*.test.*', '*.snap'.
+- Generated/openapi clients, migrations, assets, styles, binary blobs.
+
+## Tie-breakers
+1) Stronger name/path match wins.  
+2) Closer to hint file/function wins.  
+3) Shorter/simpler path wins.  
+4) Prefer code + template pairs over generic configs.
+
+## Minimum guarantee
+If you find fewer than 5 strong matches, **pad** with best-guess candidates using A–F (but never include excluded directories or files not in the list).
+
+## Output validation (hard rules)
+- Exactly two keys: '"candidates"' (array of 5–20 strings) and '"rationale"' (short string).
+- Paths must be unique and appear in the provided file list.
+- No markdown, no prose outside JSON.
+  `;
 
   const messages = [
-    { role: 'system', content: 'You are a code analysis assistant at handit.ai. Given hints and a repository tree, select candidate files likely to contain prompts for the agent. Respond with strict JSON only.' },
-    { role: 'user', content: userContent }
+    {
+      role: 'system',
+      content:
+        'You are a code analysis assistant at handit.ai. Given hints and a repository tree, select candidate files likely to contain prompts for the agent. Respond with strict JSON only.',
+    },
+    { role: 'user', content: systemContent },
   ];
 
   const token = process.env.OPENAI_API_KEY;
@@ -634,15 +1077,22 @@ async function pickCandidatesFromHints({ repoOwner, repoName, hintFilePath, hint
     temperature: 0.2,
   });
 
-  const text = completion.text || completion.choices?.[0]?.message?.content || '';
+  const text =
+    completion.text || completion.choices?.[0]?.message?.content || '';
   console.log('pickCandidatesFromHints', text);
   try {
     const parsed = JSON.parse(text);
     const arr = Array.isArray(parsed?.candidates) ? parsed.candidates : [];
-    return arr.filter(x => typeof x === 'string');
+    return arr.filter((x) => typeof x === 'string');
   } catch {
     // Fallback: simple heuristic from file names
-    const heur = limitedList.filter(p => /prompt|prompts|system|instruction|template|config|constant|ai|llm/i.test(p)).slice(0, 20);
+    const heur = limitedList
+      .filter((p) =>
+        /prompt|prompts|system|instruction|template|config|constant|ai|llm/i.test(
+          p
+        )
+      )
+      .slice(0, 20);
     return heur;
   }
 }
@@ -653,28 +1103,49 @@ async function detectPromptsViaLLM({ files, maxPrompts = 2 }) {
   for (const file of files) {
     if (results.length >= maxPrompts) break;
     const messages = [
-      { role: 'system', content: 'You are a precise code auditor. Extract at most TWO prompts (system/user/assistant texts or templates) from the provided file content. Return STRICT JSON only. Only return prompts nothing else' },
-      { role: 'user', content: [
-        `Path: ${file.path}`,
-        'Content (truncated to 8k chars):',
-        '```',
-        (file.content || '').slice(0, 8000),
-        '```',
-        '',
-        'Return JSON shape:',
-        '{ "prompts": [ { "role": "system|user|assistant|null", "text": "...", "variables": ["..."], "model": "optional" } ] }',
-      ].join('\n') }
+      {
+        role: 'system',
+        content:
+          'You are a precise code auditor. Extract at most TWO prompts (system/user/assistant texts or templates) from the provided file content. Return STRICT JSON only. Only return prompts nothing else',
+      },
+      {
+        role: 'user',
+        content: [
+          `Path: ${file.path}`,
+          'Content (truncated to 8k chars):',
+          '```',
+          (file.content || '').slice(0, 8000),
+          '```',
+          '',
+          'Return JSON shape:',
+          '{ "prompts": [ { "role": "system|user|assistant|null", "text": "...", "variables": ["..."], "model": "optional" } ] }',
+        ].join('\n'),
+      },
     ];
 
-    const completion = await generateAIResponse({ messages, model: 'gpt-4o', provider: 'OpenAI', token, temperature: 0 });
-    const text = completion.text || completion.choices?.[0]?.message?.content || '';
+    const completion = await generateAIResponse({
+      messages,
+      model: 'gpt-4o',
+      provider: 'OpenAI',
+      token,
+      temperature: 0,
+    });
+    const text =
+      completion.text || completion.choices?.[0]?.message?.content || '';
     try {
       const parsed = JSON.parse(text);
       const arr = Array.isArray(parsed?.prompts) ? parsed.prompts : [];
       for (const p of arr) {
         if (results.length >= maxPrompts) break;
         if (p && typeof p.text === 'string' && p.text.trim().length > 0) {
-          results.push({ filePath: file.path, type: 'llm', role: p.role || null, text: p.text, model: p.model || null, variables: Array.isArray(p.variables) ? p.variables : [] });
+          results.push({
+            filePath: file.path,
+            type: 'llm',
+            role: p.role || null,
+            text: p.text,
+            model: p.model || null,
+            variables: Array.isArray(p.variables) ? p.variables : [],
+          });
         }
       }
     } catch {
@@ -686,8 +1157,14 @@ async function detectPromptsViaLLM({ files, maxPrompts = 2 }) {
 
 // —— AI-generated comprehensive assessment ——
 
-export async function generateComprehensiveAssessmentMarkdown({ repoOwner, repoName, providersDetected = [], frameworksDetected = [], candidates = [] }) {
-  const topCandidates = candidates.slice(0, 30).map(c => ({
+export async function generateComprehensiveAssessmentMarkdown({
+  repoOwner,
+  repoName,
+  providersDetected = [],
+  frameworksDetected = [],
+  candidates = [],
+}) {
+  const topCandidates = candidates.slice(0, 30).map((c) => ({
     filePath: c.filePath,
     provider: c.provider,
     framework: c.framework,
@@ -699,7 +1176,8 @@ export async function generateComprehensiveAssessmentMarkdown({ repoOwner, repoN
   const messages = [
     {
       role: 'system',
-      content: 'You are a senior AI reliability engineer at handit.ai. You analyze repositories to assess LLM usage, prompt hygiene, and risks. Provide actionable, concise recommendations. Output clean Markdown only.'
+      content:
+        'You are a senior AI reliability engineer at handit.ai. You analyze repositories to assess LLM usage, prompt hygiene, and risks. Provide actionable, concise recommendations. Output clean Markdown only.',
     },
     {
       role: 'user',
@@ -723,9 +1201,9 @@ export async function generateComprehensiveAssessmentMarkdown({ repoOwner, repoN
         '- Prompt Hygiene Checklist (determinism, inputs/outputs, safety, red teaming, logging)',
         '- Next Steps (short, actionable)',
         '',
-        'Keep it concise and focused. Use bullet points. Do not invent files. Base on provided data.'
-      ].join('\n')
-    }
+        'Keep it concise and focused. Use bullet points. Do not invent files. Base on provided data.',
+      ].join('\n'),
+    },
   ];
 
   const token = process.env.OPENAI_API_KEY;
@@ -737,26 +1215,35 @@ export async function generateComprehensiveAssessmentMarkdown({ repoOwner, repoN
     temperature: 0.2,
   });
 
-  const md = completion.text || completion.choices?.[0]?.message?.content || '# AI Assessment by handit.ai\n\n(No content)';
+  const md =
+    completion.text ||
+    completion.choices?.[0]?.message?.content ||
+    '# AI Assessment by handit.ai\n\n(No content)';
   return md;
 }
 
 // Build assessment using exact file contents (deeper prompt extraction)
-export async function buildAssessmentFromFilesMarkdown({ repoOwner, repoName, providersDetected = [], frameworksDetected = [], files = [] }) {
+export async function buildAssessmentFromFilesMarkdown({
+  repoOwner,
+  repoName,
+  providersDetected = [],
+  frameworksDetected = [],
+  files = [],
+}) {
   const extracted = [];
   for (const file of files) {
     const prompts = extractPromptsFromContent(file.content || '');
     if (prompts.length > 0) {
       extracted.push({
         filePath: file.path,
-        prompts: prompts.map(p => ({
+        prompts: prompts.map((p) => ({
           type: p.type,
           role: p.role || null,
           model: p.model || null,
           variables: p.variables || [],
           text: p.text.length > 4000 ? p.text.slice(0, 4000) + '…' : p.text,
           length: p.text.length,
-        }))
+        })),
       });
     }
   }
@@ -764,7 +1251,8 @@ export async function buildAssessmentFromFilesMarkdown({ repoOwner, repoName, pr
   const messages = [
     {
       role: 'system',
-      content: 'You are a senior AI reliability engineer at handit.ai. Perform an in-depth audit of prompts and LLM usage. Identify concrete risks (jailbreak susceptibility, prompt injection vectors, PII leakage, bias, safety gaps), determinism issues, missing output schemas, and improvement opportunities. Reference specific files/prompts. Output clean, well-structured Markdown only.'
+      content:
+        'You are a senior AI reliability engineer at handit.ai. Perform an in-depth audit of prompts and LLM usage. Identify concrete risks (jailbreak susceptibility, prompt injection vectors, PII leakage, bias, safety gaps), determinism issues, missing output schemas, and improvement opportunities. Reference specific files/prompts. Output clean, well-structured Markdown only.',
     },
     {
       role: 'user',
@@ -785,9 +1273,9 @@ export async function buildAssessmentFromFilesMarkdown({ repoOwner, repoName, pr
         '## Deep Findings — for each prompt, list issues (severity High/Med/Low) with rationales and code-aware recommendations',
         '## Actionable Improvements — prioritized checklist (with examples/snippets)',
         '## Hygiene & Safety Checklist — determinism, input validation, schemas, logging, red teaming',
-        'Keep it specific and non-generic; base strictly on provided prompts.'
-      ].join('\n')
-    }
+        'Keep it specific and non-generic; base strictly on provided prompts.',
+      ].join('\n'),
+    },
   ];
 
   const token = process.env.OPENAI_API_KEY;
@@ -799,21 +1287,33 @@ export async function buildAssessmentFromFilesMarkdown({ repoOwner, repoName, pr
     temperature: 0.2,
   });
 
-  const md = completion.text || completion.choices?.[0]?.message?.content || '# AI Assessment by handit.ai\n\n(No content)';
+  const md =
+    completion.text ||
+    completion.choices?.[0]?.message?.content ||
+    '# AI Assessment by handit.ai\n\n(No content)';
   return md;
 }
 
 // Build a focused assessment of 1-2 prompts using best practices (Claude 4 prompt engineering guidance)
-export async function generatePromptBestPracticesAssessmentMarkdown({ promptsSelected = [] }) {
-  const normalized = (Array.isArray(promptsSelected) ? promptsSelected : []).slice(0, 2).map((p, idx) => ({
-    index: idx + 1,
-    filePath: p.filePath || null,
-    role: p.role || null,
-    type: p.type || null,
-    model: p.model || null,
-    variables: Array.isArray(p.variables) ? p.variables : [],
-    text: typeof p.text === 'string' ? (p.text.length > 5000 ? p.text.slice(0, 5000) + '…' : p.text) : '',
-  }));
+export async function generatePromptBestPracticesAssessmentMarkdown({
+  promptsSelected = [],
+}) {
+  const normalized = (Array.isArray(promptsSelected) ? promptsSelected : [])
+    .slice(0, 2)
+    .map((p, idx) => ({
+      index: idx + 1,
+      filePath: p.filePath || null,
+      role: p.role || null,
+      type: p.type || null,
+      model: p.model || null,
+      variables: Array.isArray(p.variables) ? p.variables : [],
+      text:
+        typeof p.text === 'string'
+          ? p.text.length > 5000
+            ? p.text.slice(0, 5000) + '…'
+            : p.text
+          : '',
+    }));
 
   const bestPractices = [
     'Be explicit with instructions and desired output',
@@ -831,7 +1331,8 @@ export async function generatePromptBestPracticesAssessmentMarkdown({ promptsSel
   const messages = [
     {
       role: 'system',
-      content: 'You are a senior AI reliability engineer at handit.ai. Perform a focused audit of the provided prompts only. Evaluate strictly against Claude 4 prompt-engineering best practices. Output clean, professional Markdown only. Do NOT include file paths, roles, or any metadata in the report. Preserve variable placeholders exactly (e.g., ${var}, {{var}}, {var}).'
+      content:
+        'You are a senior AI reliability engineer at handit.ai. Perform a focused audit of the provided prompts only. Evaluate strictly against Claude 4 prompt-engineering best practices. Output clean, professional Markdown only. Do NOT include file paths, roles, or any metadata in the report. Preserve variable placeholders exactly (e.g., ${var}, {{var}}, {var}).',
     },
     {
       role: 'user',
@@ -864,9 +1365,9 @@ export async function generatePromptBestPracticesAssessmentMarkdown({ promptsSel
         'Constraints:',
         '- Do not include file paths, roles, types, or any metadata in the output.',
         '- Do not include any content from other files or invent details.',
-        '- Keep it concise and direct.'
-      ].join('\n')
-    }
+        '- Keep it concise and direct.',
+      ].join('\n'),
+    },
   ];
 
   const token = process.env.OPENAI_API_KEY;
@@ -878,7 +1379,10 @@ export async function generatePromptBestPracticesAssessmentMarkdown({ promptsSel
     temperature: 0.2,
   });
 
-  const md = completion.text || completion.choices?.[0]?.message?.content || '## SAT Summary\n\n(No content)';
+  const md =
+    completion.text ||
+    completion.choices?.[0]?.message?.content ||
+    '## SAT Summary\n\n(No content)';
   return md;
 }
 
@@ -888,37 +1392,87 @@ function extractPromptsFromContent(content) {
   if (!content) return prompts;
 
   // Common model extraction
-  const modelMatches = Array.from(content.matchAll(/model\s*:\s*['"]([^'"\n]+)['"]/g));
+  const modelMatches = Array.from(
+    content.matchAll(/model\s*:\s*['"]([^'"\n]+)['"]/g)
+  );
   const modelName = modelMatches?.[0]?.[1] || null;
 
   // JS/TS: messages array with role/content
-  const jsMessages = Array.from(content.matchAll(/role\s*:\s*['"](system|user|assistant)['"]\s*,\s*content\s*:\s*([`'"])([\s\S]*?)\2/gi));
+  const jsMessages = Array.from(
+    content.matchAll(
+      /role\s*:\s*['"](system|user|assistant)['"]\s*,\s*content\s*:\s*([`'"])([\s\S]*?)\2/gi
+    )
+  );
   for (const m of jsMessages) {
-    prompts.push({ type: 'messages', role: m[1], text: m[3], model: modelName, variables: extractVariables(m[3]) });
+    prompts.push({
+      type: 'messages',
+      role: m[1],
+      text: m[3],
+      model: modelName,
+      variables: extractVariables(m[3]),
+    });
   }
 
   // JS/TS: systemPrompt/basePrompt variables
-  const jsVars = Array.from(content.matchAll(/(systemPrompt|basePrompt|promptTemplate|instructions)\s*=\s*([`'"])([\s\S]*?)\2/gi));
+  const jsVars = Array.from(
+    content.matchAll(
+      /(systemPrompt|basePrompt|promptTemplate|instructions)\s*=\s*([`'"])([\s\S]*?)\2/gi
+    )
+  );
   for (const v of jsVars) {
-    prompts.push({ type: 'variable', role: inferRoleFromName(v[1]), text: v[3], model: modelName, variables: extractVariables(v[3]) });
+    prompts.push({
+      type: 'variable',
+      role: inferRoleFromName(v[1]),
+      text: v[3],
+      model: modelName,
+      variables: extractVariables(v[3]),
+    });
   }
 
   // LangChain JS: template field
-  const jsTemplates = Array.from(content.matchAll(/template\s*:\s*([`'"])([\s\S]*?)\1/gi));
+  const jsTemplates = Array.from(
+    content.matchAll(/template\s*:\s*([`'"])([\s\S]*?)\1/gi)
+  );
   for (const t of jsTemplates) {
-    prompts.push({ type: 'template', role: null, text: t[2], model: modelName, variables: extractVariables(t[2]) });
+    prompts.push({
+      type: 'template',
+      role: null,
+      text: t[2],
+      model: modelName,
+      variables: extractVariables(t[2]),
+    });
   }
 
   // Python: messages list entries
-  const pyMessages = Array.from(content.matchAll(/['"]role['"]\s*:\s*['"](system|user|assistant)['"].{0,200}?['"]content['"]\s*:\s*("""|'''|['"])([\s\S]*?)\2/gi));
+  const pyMessages = Array.from(
+    content.matchAll(
+      /['"]role['"]\s*:\s*['"](system|user|assistant)['"].{0,200}?['"]content['"]\s*:\s*("""|'''|['"])([\s\S]*?)\2/gi
+    )
+  );
   for (const pm of pyMessages) {
-    prompts.push({ type: 'messages', role: pm[1], text: pm[3], model: modelName, variables: extractVariables(pm[3]) });
+    prompts.push({
+      type: 'messages',
+      role: pm[1],
+      text: pm[3],
+      model: modelName,
+      variables: extractVariables(pm[3]),
+    });
   }
 
   // Python: system_prompt/base_prompt style
-  const pyVars = Array.from(content.matchAll(/(system_prompt|base_prompt|prompt_template|instructions)\s*=\s*("""|'''|['"])([\s\S]*?)\2/gi));
+  const pyVars = Array.from(
+    content.matchAll(
+      /(system_prompt|base_prompt|prompt_template|instructions)\s*=\s*("""|'''|['"])([\s\S]*?)\2/gi
+    )
+  );
   for (const pv of pyVars) {
-    prompts.push({ type: 'variable', role: inferRoleFromName(pv[1]), text: pv[3], model: modelName, variables: extractVariables(pv[3]) });
+    prompts.push({
+      type: 'variable',
+      role: inferRoleFromName(pv[1]),
+      text: pv[3],
+      model: modelName,
+      variables: extractVariables(pv[3]),
+    });
   }
 
   return prompts;
@@ -929,7 +1483,8 @@ function extractVariables(text) {
   // JS template literals
   for (const m of text.matchAll(/\$\{([^}]+)\}/g)) vars.add(m[1].trim());
   // Mustache-style
-  for (const m of text.matchAll(/\{\{\s*([^}\s]+)\s*\}\}/g)) vars.add(m[1].trim());
+  for (const m of text.matchAll(/\{\{\s*([^}\s]+)\s*\}\}/g))
+    vars.add(m[1].trim());
   // Python f-string style {var}
   for (const m of text.matchAll(/\{([^}]+)\}/g)) {
     const candidate = m[1].trim();
@@ -944,4 +1499,3 @@ function inferRoleFromName(name) {
   if (name.toLowerCase().includes('user')) return 'user';
   return null;
 }
-
