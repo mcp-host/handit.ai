@@ -1106,7 +1106,30 @@ async function detectPromptsViaLLM({ files, maxPrompts = 2 }) {
       {
         role: 'system',
         content:
-          'You are a precise code auditor. Extract at most TWO prompts (system/user/assistant texts or templates) from the provided file content. Return STRICT JSON only. Only return prompts nothing else',
+        `You are a precise code auditor. Your task is to extract at most TWO prompts from the provided file content.
+
+        A "prompt" can be:
+        - A system, user, or assistant message string.
+        - A template string intended for LLM input (may contain placeholders like {variable}).
+        - A constant that holds or represents a prompt (treat constants as system prompts if role is unclear).
+        - A string inside an array/object of messages with a "role" or similar key.
+        
+        Rules:
+        1. Ignore unrelated strings (e.g., labels, UI text, comments, code).
+        2. If more than two prompts are found, return the two most central to the LLM’s core behavior.
+        3. Do not alter wording, except to trim whitespace and remove code artifacts like quotes or backticks.
+        4. If no prompts are found, return an empty array.
+        
+        Output:
+        Return STRICT JSON only, exactly in this shape:
+        {
+          "prompts": [
+            { "role": "system" | "user" | "assistant", "text": "...", "variables": ["..."], "model": "optional" },
+            { "role": "system" | "user" | "assistant", "text": "...", "variables": ["..."], "model": "optional" }
+          ]
+        }
+        
+        Do not return any other text, comments, or explanations.`
       },
       {
         role: 'user',
@@ -1130,6 +1153,7 @@ async function detectPromptsViaLLM({ files, maxPrompts = 2 }) {
       token,
       temperature: 0,
     });
+    console.log('detectPromptsViaLLM', completion);
     const text =
       completion.text || completion.choices?.[0]?.message?.content || '';
     try {
