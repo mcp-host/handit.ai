@@ -1337,16 +1337,23 @@ export async function generatePromptBestPracticesAssessmentMarkdown({
     }));
 
   const bestPractices = [
-    'Be explicit with instructions and desired output',
-    'Add context and rationale for better alignment',
-    'Use examples that reflect desired behaviors',
-    'Control the format of responses (specify structure/sections)',
-    'Prefer positive instructions over prohibitions',
-    'Use XML-like tags when strict formatting is required',
-    'Match prompt style to desired output style',
-    'Guide thinking and reflection for multi-step reasoning',
-    'Optimize parallel tool calling where applicable',
-    'Avoid focusing on passing tests/hard-coding; prefer general solutions',
+    "Be explicit with instructions and desired output",
+    "Add context and rationale for better alignment",
+    "Provide examples that reflect desired behaviors (few-shot prompting)",
+    "Guide thinking and reflection for multi-step reasoning (chain-of-thought)",
+    "Control the format of responses (specify structure, sections, or delimiters)",
+    "Match prompt style and tone to desired output style",
+    "Assign a role or persona to the AI for consistent style and expertise",
+    "Break large tasks into smaller, sequential prompts",
+    "Set explicit constraints on length, tone, and format",
+    "Prefer positive instructions over prohibitions",
+    "Use XML-like tags or other clear markers when strict formatting is required",
+    "Optimize parallel tool calling where applicable",
+    "Ask the model to quote or verify sources and allow it to say 'I don't know'",
+    "Repeat critical instructions in multiple parts of the prompt for reinforcement",
+    "Avoid focusing on passing tests or hard-coding; prefer general solutions",
+    "Embed ethical considerations, fairness, and transparency in prompt design",
+    "Manage token limits and context window to avoid truncation or loss of information"
   ];
 
   const messages = [
@@ -1363,7 +1370,7 @@ export async function generatePromptBestPracticesAssessmentMarkdown({
         JSON.stringify(normalized, null, 2),
         '```',
         '',
-        'Claude 4 best practices to consider (for your analysis only):',
+        'Best practices to consider (for your analysis only):',
         '```text',
         bestPractices.map((b, i) => `${i + 1}. ${b}`).join('\n'),
         '```',
@@ -1391,6 +1398,7 @@ export async function generatePromptBestPracticesAssessmentMarkdown({
         '- Do not include file paths, roles, types, or any metadata in the output.',
         '- Do not rewrite or suggest new prompts at this stage.',
         '- Keep it concise and practical.',
+        '- Do not mention the number of the best practice as the user does not know the order, if you are mentioning a best practice mention it with an small title or phrase that represents it'
       ].join('\n'),
     },
   ];
