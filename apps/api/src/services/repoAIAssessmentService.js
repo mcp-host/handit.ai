@@ -886,7 +886,6 @@ async function assessRepositoryWithHintsFlow({
         files: remainingFiles,
         maxPrompts: 2 - promptsSelected.length,
       });
-      console.log('llmExtracted', llmExtracted);
       for (const p of llmExtracted) {
         if (promptsSelected.length >= 2) break;
         promptsSelected.push(p);
@@ -1154,10 +1153,12 @@ async function detectPromptsViaLLM({ files, maxPrompts = 2 }) {
       provider: 'OpenAI',
       token,
       temperature: 0,
+      responseFormat: { type: 'json_object' },
     });
     console.log('detectPromptsViaLLM', completion);
     const text =
-      completion.text || completion.choices?.[0]?.message?.content || '';
+      completion.choices?.[0]?.message?.content || '';
+    console.log('text', text);
     try {
       const parsed = JSON.parse(text);
       const arr = Array.isArray(parsed?.prompts) ? parsed.prompts : [];
