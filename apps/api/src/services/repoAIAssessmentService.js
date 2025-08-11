@@ -875,13 +875,10 @@ async function assessRepositoryWithHintsFlow({
       }
     }
 
-    console.log('promptsSelected 1', promptsSelected);
-
     if (promptsSelected.length < 2) {
       const remainingFiles = candidateFilesWithContent.filter(
         (f) => !promptsSelected.some((p) => p.filePath === f.path)
       );
-      console.log('remainingFiles', remainingFiles);
       const llmExtracted = await detectPromptsViaLLM({
         files: remainingFiles,
         maxPrompts: 2 - promptsSelected.length,
@@ -891,8 +888,6 @@ async function assessRepositoryWithHintsFlow({
         promptsSelected.push(p);
       }
     }
-
-    console.log('promptsSelected 2', promptsSelected);
 
     // Basic provider/framework detection from candidate contents using existing query hints
     const queries = [...buildHighSignalQueries()];
@@ -1155,11 +1150,10 @@ async function detectPromptsViaLLM({ files, maxPrompts = 2 }) {
       temperature: 0,
       responseFormat: { type: 'json_object' },
     });
-    console.log('detectPromptsViaLLM', completion);
     const text =
       completion.choices?.[0]?.message?.content || '';
-    console.log('text', text);
-    try {
+
+      try {
       const parsed = JSON.parse(text);
       const arr = Array.isArray(parsed?.prompts) ? parsed.prompts : [];
       for (const p of arr) {
@@ -1359,7 +1353,7 @@ export async function generatePromptBestPracticesAssessmentMarkdown({
     {
       role: 'system',
       content:
-        'You are a senior AI reliability engineer at handit.ai. Perform a focused audit of the provided prompts only. Evaluate strictly against Claude 4 prompt-engineering best practices. Output clean, professional Markdown only. Do NOT include file paths, roles, or any metadata in the report. Preserve variable placeholders exactly (e.g., ${var}, {{var}}, {var}).',
+        'You are a senior AI reliability engineer at handit.ai. Assess ONLY the provided prompts against  prompt-engineering best practices. Produce a professional Markdown report. Do NOT include file paths, roles, or metadata. Do NOT propose or rewrite prompts. Identify strengths, potential gaps, and risk indicators with severity. Note that confidence is limited because this is a static, initial assessment. Encourage setup completion so handit can automatically remediate later. Preserve all variable placeholders in any quoted prompt text (e.g., ${var}, {{var}}, {var}).',
     },
     {
       role: 'user',
@@ -1374,25 +1368,29 @@ export async function generatePromptBestPracticesAssessmentMarkdown({
         bestPractices.map((b, i) => `${i + 1}. ${b}`).join('\n'),
         '```',
         '',
-        'Produce ONE professional Markdown document titled "## SAT Summary". For EACH prompt, include exactly:',
-        '### Prompt N',
+        'Produce ONE professional Markdown document titled "## Prompt Best Practices Assessment". Include:',
+        '### Summary',
+        '- Brief overview of prompt quality and overall adherence to best practices.',
+        '',
+        '### Prompts',
+        'For each prompt (in order):',
         '#### Original prompt',
         '```text',
-        '<<insert the exact original prompt text here, not a placeholder>>',
+        '(include the exact original prompt text here)',
         '```',
-        '#### Issues (best-practices)',
-        '- Bullet list of concrete issues mapped to best practices. Include severity (High/Med/Low).',
-        '#### Proposed changes',
-        '- Bullet list of specific, actionable changes.',
-        '#### Suggested prompt',
-        '```text',
-        '<<insert the fully rewritten prompt applying the proposed changes; preserve variables exactly>>',
-        '```',
+        '#### Alignment with best practices',
+        '- Bullet list of strengths where the prompt aligns well.',
+        '#### Potential gaps and risks',
+        '- Bullet list of issues mapped to best practices with severity (High/Med/Low) and a short rationale.',
+        '- Add a confidence note (e.g., "Confidence: Low/Medium" due to static analysis).',
+        '',
+        '### Next steps',
+        '- Short checklist to complete setup so handit can automatically remediate prompts (e.g., enable instrumentation, connect providers, run evaluation harness).',
         '',
         'Constraints:',
         '- Do not include file paths, roles, types, or any metadata in the output.',
-        '- Do not include any content from other files or invent details.',
-        '- Keep it concise and direct.',
+        '- Do not rewrite or suggest new prompts at this stage.',
+        '- Keep it concise and practical.',
       ].join('\n'),
     },
   ];
@@ -1400,7 +1398,7 @@ export async function generatePromptBestPracticesAssessmentMarkdown({
   const token = process.env.OPENAI_API_KEY;
   const completion = await generateAIResponse({
     messages,
-    model: 'gpt-4o-mini',
+    model: 'gpt-4o',
     provider: 'OpenAI',
     token,
     temperature: 0.2,
@@ -1409,7 +1407,7 @@ export async function generatePromptBestPracticesAssessmentMarkdown({
   const md =
     completion.text ||
     completion.choices?.[0]?.message?.content ||
-    '## SAT Summary\n\n(No content)';
+    '## Prompt Best Practices Assessment\n\n(No content)';
   return md;
 }
 
