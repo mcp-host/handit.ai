@@ -881,10 +881,12 @@ async function assessRepositoryWithHintsFlow({
       const remainingFiles = candidateFilesWithContent.filter(
         (f) => !promptsSelected.some((p) => p.filePath === f.path)
       );
+      console.log('remainingFiles', remainingFiles);
       const llmExtracted = await detectPromptsViaLLM({
         files: remainingFiles,
         maxPrompts: 2 - promptsSelected.length,
       });
+      console.log('llmExtracted', llmExtracted);
       for (const p of llmExtracted) {
         if (promptsSelected.length >= 2) break;
         promptsSelected.push(p);
@@ -1137,7 +1139,7 @@ async function detectPromptsViaLLM({ files, maxPrompts = 2 }) {
           `Path: ${file.path}`,
           'Content (truncated to 8k chars):',
           '```',
-          (file.content || '').slice(0, 8000),
+          (file.content || ''),
           '```',
           '',
           'Return JSON shape:',
