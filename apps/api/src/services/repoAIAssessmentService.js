@@ -1392,7 +1392,7 @@ export async function generatePromptBestPracticesAssessmentMarkdown({
         '- Add a confidence note (e.g., "Confidence: Low/Medium" due to static analysis).',
         '',
         '### Next steps',
-        '- Short checklist to complete setup so handit can automatically remediate prompts (e.g., enable instrumentation, connect providers, run evaluation harness).',
+        'On next steps, tell the user to finish handit.ai setup using the cli, so handit can track the prompts, automatically evaluate and then create PRs to fix the issues.',
         '',
         'Constraints:',
         '- Do not include file paths, roles, types, or any metadata in the output.',
