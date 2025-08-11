@@ -133,9 +133,12 @@ export async function associatePromptToModel(req, res) {
     if (exists) {
       return res.status(400).json({ success: false, message: 'Prompt already associated with model.' });
     }
+    console.log('integrationTokenId', integrationTokenId);
+    console.log('providerModel', providerModel);
     const association = await ModelEvaluationPrompt.create({ modelId, evaluationPromptId, integrationTokenId, providerModel });
     return res.status(201).json({ success: true, data: association });
   } catch (error) {
+    console.log('error', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 }
