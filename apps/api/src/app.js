@@ -2,7 +2,6 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import session from 'express-session';
-import { Sequelize } from 'sequelize';
 import cors from 'cors';
 import compression from 'compression';
 import authRoutes from './routes/authRoutes.js';
@@ -51,6 +50,7 @@ import emailRoutes from './routes/emailRoutes.js';
 import notificationSystemRoutes from './routes/notificationSystemRoutes.js';
 import emailAutonomRoutes from './routes/emailAutonomRoutes.js';
 import promptOptimizationRoutes from './routes/promptOptimizationRoutes.js';
+import ingestRoutes from './routes/ingestRoutes.js';
 
 dotenv.config();
 
@@ -97,6 +97,7 @@ app.use('/api/messages', validateApiToken, messageRouter);
 app.use('/api/agent-structure', validateApiToken, agentStructureRoutes);
 
 app.use('/api/email', emailRoutes);
+app.use('/api/ingest', ingestRoutes);
 
 app.use('/api/notification-system', notificationSystemRoutes);
 
