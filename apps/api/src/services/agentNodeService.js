@@ -196,7 +196,12 @@ export const repositionAgentNodes = async (agent) => {
     const nodeConfig = repositionedConfig.nodes.find((n) => n.slug === node.slug);
     if (nodeConfig) {
       console.log('node found', node.slug);
-      node.config.position = nodeConfig.position;
+      console.log('nodeConfig', nodeConfig);
+      node.config = {
+        ...node.config,
+        position: nodeConfig.position,
+      };
+      console.log('node', node);
       await node.save();
     } else {
       console.log('node not found', node.slug);
