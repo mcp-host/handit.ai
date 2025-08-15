@@ -171,5 +171,38 @@ export const repositionGraphNodes = (graph) => {
     });
   });
 
+  // Resolve any residual collisions on the same Y (layer) by nudging along X only
+  // This ensures no two nodes share the exact same (x, y) coordinate
+  const yToXCollisions = new Map();
+  graph.nodes.forEach((node) => {
+    const yKey = node.position.y;
+    if (!yToXCollisions.has(yKey)) yToXCollisions.set(yKey, new Map());
+    const xMap = yToXCollisions.get(yKey);
+    const xKey = node.position.x;
+    if (!xMap.has(xKey)) xMap.set(xKey, []);
+    xMap.get(xKey).push(node);
+  });
+
+  // Amount to spread colliding nodes by, centered around the original X
+  const spreadStep = Math.max(40, Math.floor(horizontalSpacing / 4)); // ~75 for 300 spacing
+
+  for (const [, xMap] of yToXCollisions.entries()) {
+    for (const [xValue, nodesAtSameX] of xMap.entries()) {
+      if (nodesAtSameX.length <= 1) continue;
+      // Distribute symmetrically around the original xValue
+      // Example for n=3: offsets [-spreadStep, 0, +spreadStep]
+      const n = nodesAtSameX.length;
+      const centerIndex = (n - 1) / 2;
+      nodesAtSameX
+        .sort((a, b) => (a.slug || '').localeCompare(b.slug || ''))
+        .forEach((node, idx) => {
+          const offset = Math.round((idx - centerIndex) * spreadStep);
+          node.position.x = xValue + offset;
+        });
+    }
+  }
+
+  
+
   return graph;
 }

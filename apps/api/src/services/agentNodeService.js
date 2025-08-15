@@ -153,10 +153,12 @@ export const repositionAgentNodes = async (agent) => {
     where: { agentId: agent.id },
     include: [
       {
+        required: false,
         model: AgentConnection,
         as: 'outgoingConnections',
         include: [
           {
+            required: false,
             model: AgentNode,
             as: 'toNode',
           },
@@ -190,7 +192,7 @@ export const repositionAgentNodes = async (agent) => {
   // Update node positions
   await Promise.all(
     repositionedConfig.nodes.map(async (nodeConfig) => {
-      const node = nodes.find((n) => n.slug === nodeConfig.slug);
+      const node = nodes.find((n) => n.slug == nodeConfig.slug);
       if (node) {
         await node.update({
           config: {
