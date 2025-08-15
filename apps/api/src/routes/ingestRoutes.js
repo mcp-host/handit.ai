@@ -1,24 +1,64 @@
 import express from 'express';
-import bodyParser from 'body-parser';
+import crypto from 'crypto';
+import { Storage } from '@google-cloud/storage';
 
 const router = express.Router();
 
-// Public endpoint: ingest events (supports gzip + JSONL/NDJSON)
-router.post('/events', bodyParser.raw({ type: '*/*', limit: '500mb' }), async (req, res) => {
+const storage = new Storage();
+const BUCKET = process.env.LOGS_BUCKET || '';
+
+// Public endpoint: ultra-fast ingest — streams request body directly to GCS
+router.post('/events', async (req, res) => {
+  if (!BUCKET) {
+    return res.status(500).json({ ok: false, error: 'LOGS_BUCKET not configured' });
+  }
+
   try {
-    console.log('api/ingest/events headers:', req.headers);
-    // Note: body-parser inflates gzip/deflate by default. req.body is already a Buffer of decompressed bytes.
-    const rawBuffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || '');
-    const text = rawBuffer.toString('utf-8');
+    // Extract auth token (Bearer or raw). Use a short hash for partitioning to avoid storing raw secrets
+    const authHeader = (req.headers['authorization'] || '').toString();
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+    const tokenHash = token ? crypto.createHash('sha256').update(token).digest('hex').slice(0, 16) : 'anon';
 
-    // Log the decompressed text as-is (JSONL/NDJSON supported)
-    console.log('api/ingest/events body (decompressed):');
-    console.log(text);
+    const now = new Date();
+    const y = now.getUTCFullYear();
+    const m = String(now.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(now.getUTCDate()).padStart(2, '0');
+    const objectName = `ingest/auth=${tokenHash}/${y}/${m}/${d}/${Date.now()}_${crypto.randomUUID()}.jsonl.gz`;
 
-    res.status(200).json({ success: true });
+    const bucket = storage.bucket(BUCKET);
+    const file = bucket.file(objectName);
+
+    const writeStream = file.createWriteStream({
+      resumable: true,
+      contentType: 'application/x-ndjson',
+      metadata: {
+        contentEncoding: 'gzip',
+        metadata: { tokenHash },
+      },
+      ifGenerationMatch: 0,
+    });
+
+    req.on('aborted', () => writeStream.destroy(new Error('client aborted')));
+
+    writeStream.on('error', (err) => {
+      console.error('GCS write error:', err);
+      if (!res.headersSent) res.status(500).json({ ok: false, error: 'upload failed' });
+    });
+
+    writeStream.on('finish', async () => {
+      try {
+        return res.status(200).json({ ok: true, object: objectName });
+      } catch (e) {
+        console.error('Post-upload step failed:', e);
+        if (!res.headersSent) res.status(500).json({ ok: false, error: 'post-upload failed' });
+      }
+    });
+
+    // Stream request body directly to GCS (supports large payloads efficiently)
+    req.pipe(writeStream);
   } catch (error) {
     console.error('Error handling ingest event:', error);
-    res.status(500).json({ success: false, error: 'Failed to handle ingest event' });
+    if (!res.headersSent) res.status(500).json({ ok: false, error: 'Failed to handle ingest event' });
   }
 });
 
