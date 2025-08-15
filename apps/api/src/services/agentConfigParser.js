@@ -204,6 +204,22 @@ export const repositionGraphNodes = (graph) => {
     }
   }
 
+  // Final normalization: ensure contiguous 300px spacing along X within each Y layer
+  const nodesByY = new Map();
+  graph.nodes.forEach((node) => {
+    const yKey = node.position.y;
+    if (!nodesByY.has(yKey)) nodesByY.set(yKey, []);
+    nodesByY.get(yKey).push(node);
+  });
+
+  for (const [, nodesAtY] of nodesByY.entries()) {
+    nodesAtY
+      .sort((a, b) => a.position.x - b.position.x || (a.slug || '').localeCompare(b.slug || ''))
+      .forEach((node, idx) => {
+        node.position.x = idx * horizontalSpacing;
+      });
+  }
+
   
 
   return graph;
