@@ -192,7 +192,10 @@ export const repositionAgentNodes = async (agent) => {
   // Update node positions
   await Promise.all(
     repositionedConfig.nodes.map(async (nodeConfig) => {
+      console.log('nodeConfig', nodeConfig);
       const node = nodes.find((n) => n.slug == nodeConfig.slug);
+      console.log('nodes', nodes);
+      console.log('node', node);
       if (node) {
         await node.update({
           config: {
