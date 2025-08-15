@@ -188,24 +188,20 @@ export const repositionAgentNodes = async (agent) => {
   };
 
   const repositionedConfig = repositionGraphNodes(agentConfig);
+  const nodesPlain = await AgentNode.findAll({
+    where: { agentId: agent.id },
+  });
 
-  // Update node positions
-  await Promise.all(
-    repositionedConfig.nodes.map(async (nodeConfig) => {
-      console.log('nodeConfig', nodeConfig);
-      const node = nodes.find((n) => n.slug == nodeConfig.slug);
-      console.log('nodes', nodes);
-      console.log('node', node);
-      if (node) {
-        await node.update({
-          config: {
-            ...node.config,
-            position: nodeConfig.position,
-          },
-        });
-      }
-    })
-  );
+  await Promise.all(nodesPlain.map(async (node) => {
+    const nodeConfig = repositionedConfig.nodes.find((n) => n.slug === node.slug);
+    if (nodeConfig) {
+      console.log('node found', node.slug);
+      node.config.position = nodeConfig.position;
+      await node.save();
+    } else {
+      console.log('node not found', node.slug);
+    }
+  }));
 };
 
 /**
