@@ -171,34 +171,36 @@ export const repositionGraphNodes = (graph) => {
     });
   });
 
-  // Resolve any residual collisions on the same Y (layer) by nudging along X only
-  // This ensures no two nodes share the exact same (x, y) coordinate
-  const yToXCollisions = new Map();
+  // Resolve any residual collisions on the same Y (layer) by moving along X only,
+  // keeping a strict separation of `horizontalSpacing` (300) between nodes
+  const yToXMap = new Map();
   graph.nodes.forEach((node) => {
     const yKey = node.position.y;
-    if (!yToXCollisions.has(yKey)) yToXCollisions.set(yKey, new Map());
-    const xMap = yToXCollisions.get(yKey);
+    if (!yToXMap.has(yKey)) yToXMap.set(yKey, new Map());
+    const xMap = yToXMap.get(yKey);
     const xKey = node.position.x;
     if (!xMap.has(xKey)) xMap.set(xKey, []);
     xMap.get(xKey).push(node);
   });
 
-  // Amount to spread colliding nodes by, centered around the original X
-  const spreadStep = Math.max(40, Math.floor(horizontalSpacing / 4)); // ~75 for 300 spacing
-
-  for (const [, xMap] of yToXCollisions.entries()) {
+  for (const [, xMap] of yToXMap.entries()) {
+    // Build occupied X set for this Y layer
+    const occupiedX = new Set(Array.from(xMap.keys()));
     for (const [xValue, nodesAtSameX] of xMap.entries()) {
       if (nodesAtSameX.length <= 1) continue;
-      // Distribute symmetrically around the original xValue
-      // Example for n=3: offsets [-spreadStep, 0, +spreadStep]
-      const n = nodesAtSameX.length;
-      const centerIndex = (n - 1) / 2;
-      nodesAtSameX
-        .sort((a, b) => (a.slug || '').localeCompare(b.slug || ''))
-        .forEach((node, idx) => {
-          const offset = Math.round((idx - centerIndex) * spreadStep);
-          node.position.x = xValue + offset;
-        });
+      // Keep first node at the original x; move the rest to the next available slots to the right
+      const sorted = nodesAtSameX.sort((a, b) => (a.slug || '').localeCompare(b.slug || ''));
+      // First stays
+      const [, ...rest] = sorted;
+      for (const node of rest) {
+        let candidateX = xValue;
+        // Find next free X slot spaced by horizontalSpacing
+        do {
+          candidateX += horizontalSpacing;
+        } while (occupiedX.has(candidateX));
+        node.position.x = candidateX;
+        occupiedX.add(candidateX);
+      }
     }
   }
 
