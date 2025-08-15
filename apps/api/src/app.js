@@ -51,6 +51,7 @@ import notificationSystemRoutes from './routes/notificationSystemRoutes.js';
 import emailAutonomRoutes from './routes/emailAutonomRoutes.js';
 import promptOptimizationRoutes from './routes/promptOptimizationRoutes.js';
 import ingestRoutes from './routes/ingestRoutes.js';
+import agentMaintenanceRoutes from './routes/agentMaintenanceRoutes.js';
 
 dotenv.config();
 
@@ -98,6 +99,7 @@ app.use('/api/agent-structure', validateApiToken, agentStructureRoutes);
 
 app.use('/api/email', emailRoutes);
 app.use('/api/ingest', ingestRoutes);
+app.use('/api/agent-maintenance', agentMaintenanceRoutes);
 
 app.use('/api/notification-system', notificationSystemRoutes);
 
