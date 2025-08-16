@@ -195,8 +195,6 @@ export const repositionAgentNodes = async (agent) => {
   await Promise.all(nodesPlain.map(async (node) => {
     const nodeConfig = repositionedConfig.nodes.find((n) => n.slug === node.slug);
     if (nodeConfig) {
-      console.log('node found', node.slug);
-      console.log('nodeConfig', nodeConfig);
       node.config = {
         ...node.config,
         position: nodeConfig.position,

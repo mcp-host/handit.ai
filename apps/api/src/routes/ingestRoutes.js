@@ -20,10 +20,7 @@ router.post('/events', async (req, res) => {
     const tokenHash = token ? crypto.createHash('sha256').update(token).digest('hex').slice(0, 16) : 'anon';
 
     const now = new Date();
-    const y = now.getUTCFullYear();
-    const m = String(now.getUTCMonth() + 1).padStart(2, '0');
-    const d = String(now.getUTCDate()).padStart(2, '0');
-    const objectName = `ingest/auth=${tokenHash}/${y}/${m}/${d}/${Date.now()}_${crypto.randomUUID()}.jsonl.gz`;
+    const objectName = `ingest/auth=${tokenHash}/${now.toISOString()}.jsonl.gz`;
 
     const bucket = storage.bucket(BUCKET);
     const file = bucket.file(objectName);
