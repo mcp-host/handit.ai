@@ -17,10 +17,9 @@ router.post('/events', async (req, res) => {
     // Extract auth token (Bearer or raw). Use a short hash for partitioning to avoid storing raw secrets
     const authHeader = (req.headers['authorization'] || '').toString();
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
-    const tokenHash = token ? crypto.createHash('sha256').update(token).digest('hex').slice(0, 16) : 'anon';
+    const tokenHash = token ? token : 'anon';
 
-    const now = new Date();
-    const objectName = `ingest/auth=${tokenHash}/${now.toISOString()}.jsonl.gz`;
+    const objectName = `ingest/auth=${tokenHash}/${Date.now()}_${crypto.randomUUID()}.jsonl.gz`;
 
     const bucket = storage.bucket(BUCKET);
     const file = bucket.file(objectName);
