@@ -62,6 +62,26 @@ export const update = async (req, res) => {
   }
 };
 
+export const updateBySlug = async (req, res) => {
+  try {
+    const slug =  req.params.slug;
+    const { userObject } = req;
+    const { companyId } = userObject;
+
+    const agent = await Agent.findOne({ where: { slug, companyId } });
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+
+    await agent.update({...agent, ...req.body});
+    res.status(200).json(agent);
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
 export const createNode = async (req, res) => {
   try {
     const node = await createAgentNode(req.body);
