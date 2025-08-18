@@ -32,7 +32,7 @@ router.post('/', create);
 router.get('/', getAllAgents);
 router.get('/:id', get);
 router.put('/:id', update);
-router.post('/:slug', updateBySlug);
+router.post('/by-slug/:slug', updateBySlug);
 router.post('/nodes', createNode);
 router.put('/nodes/:id', updateNode);
 router.delete('/nodes/:id', deleteNode);
