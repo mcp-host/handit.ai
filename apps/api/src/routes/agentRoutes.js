@@ -19,6 +19,7 @@ import {
   cloneAgent,
   uploadAgent,
   getAgentCorrectEntriesByDay,
+  updateBySlug,
 } from '../controllers/agentController.js';
 import multer from 'multer';
 
