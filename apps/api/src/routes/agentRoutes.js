@@ -20,6 +20,7 @@ import {
   uploadAgent,
   getAgentCorrectEntriesByDay,
   updateBySlug,
+  getAgentBySlug,
 } from '../controllers/agentController.js';
 import multer from 'multer';
 
@@ -33,6 +34,7 @@ router.get('/', getAllAgents);
 router.get('/:id', get);
 router.put('/:id', update);
 router.post('/by-slug/:slug', updateBySlug);
+router.get('/by-slug/:slug', getAgentBySlug);
 router.post('/nodes', createNode);
 router.put('/nodes/:id', updateNode);
 router.delete('/nodes/:id', deleteNode);
