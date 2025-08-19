@@ -59,6 +59,44 @@ export const initiateGitHubAuth = async (req, res) => {
   }
 };
 
+// Public endpoint: list repositories for a GitHub App installation (via integrationId)
+export const listInstallationRepositories = async (req, res) => {
+  try {
+    const { integrationId } = req.query;
+    if (!integrationId) {
+      return res.status(400).json({ success: false, error: 'integrationId is required' });
+    }
+
+    const integration = await GitHubIntegration.findByPk(Number(integrationId));
+    if (!integration) {
+      return res.status(404).json({ success: false, error: 'GitHubIntegration not found' });
+    }
+    if (!integration.isConfigured()) {
+      return res.status(400).json({ success: false, error: 'GitHub integration is not configured' });
+    }
+
+    const token = await integration.getInstallationAccessToken();
+    if (!token) {
+      return res.status(400).json({ success: false, error: 'Unable to obtain installation token' });
+    }
+
+    const github = new GitHubClient(token);
+    const data = await github.listInstallationRepos();
+    const repos = (data?.repositories || []).map(r => ({
+      id: r.id,
+      fullName: r.full_name,
+      name: r.name,
+      owner: r.owner?.login,
+      private: r.private,
+      defaultBranch: r.default_branch,
+    }));
+    return res.status(200).json({ success: true, repositories: repos });
+  } catch (error) {
+    console.error('Error listing installation repositories:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 /**
  * Handle GitHub App installation callback
  */

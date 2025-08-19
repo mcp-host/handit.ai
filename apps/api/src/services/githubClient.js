@@ -72,6 +72,11 @@ class GitHubClient {
     return this.request(`/repos/${owner}/${repo}`);
   }
 
+  async listInstallationRepos() {
+    // Requires an installation access token
+    return this.request(`/installation/repositories`);
+  }
+
   async getContent(owner, repo, path, ref = null) {
     const params = ref ? `?ref=${ref}` : '';
     return this.request(`/repos/${owner}/${repo}/contents/${path}${params}`);
