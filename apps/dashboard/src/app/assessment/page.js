@@ -56,7 +56,7 @@ export default function PublicAssessmentPage() {
         branch: branch || null,
         preferLocalClone: true,
       };
-      const resp = await fetch(`${apiBase}/api/git/assess-and-pr`, {
+      const resp = await fetch(`${apiBase}/git/assess-and-pr`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
