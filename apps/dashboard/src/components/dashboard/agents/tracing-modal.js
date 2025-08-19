@@ -1783,11 +1783,36 @@ export function TracingModal({
 
       if (cycles.length > 1) {
         // remove edges from node to the same node
-        const newEdges = updatedEdges.filter((edge) => edge.source !== edge.target);
-        const newPhantomEdges = phantomEdges.filter((edge) => edge.source !== edge.target);
+        let newEdges = updatedEdges.filter((edge) => edge.source !== edge.target);
+        
+        // filter edges where A->B and B->A exists, only keep A->B, keep the one with top position
+        newEdges = newEdges.filter((edge) => {
+          const reverseEdge = newEdges.find((e) => e.source === edge.target && e.target === edge.source);
+          if (reverseEdge) {
+            return edge.position.y < reverseEdge.position.y;
+          }
+          return true;
+        });
+        let newPhantomEdges = phantomEdges.filter((edge) => edge.source !== edge.target);
+        newPhantomEdges = newPhantomEdges.filter((edge) => {
+          const reverseEdge = newEdges.find((e) => e.source === edge.target && e.target === edge.source);
+          if (reverseEdge) {
+            return edge.position.y < reverseEdge.position.y;
+          }
+          return true;
+        });
+
         setProcessedEdges([...newEdges, ...newPhantomEdges]);
       } else {
-        const newEdges = updatedEdges.filter((edge) => edge.source !== edge.target);
+        let newEdges = updatedEdges.filter((edge) => edge.source !== edge.target);
+        newEdges = newEdges.filter((edge) => {
+          const reverseEdge = newEdges.find((e) => e.source === edge.target && e.target === edge.source);
+          if (reverseEdge) {
+            return edge.position.y < reverseEdge.position.y;
+          }
+          return true;
+        });
+
         setProcessedEdges([...newEdges]);
       }
   }, [regularEdges, highlightedPath]);
