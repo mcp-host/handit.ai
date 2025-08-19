@@ -23,7 +23,7 @@ export const detectSystemPromptStructure = async (logs, model) => {
   try {
 
     // Take a sample of logs for analysis
-    const sampleLogs = logs.slice(0, Math.min(5, logs.length));
+    const sampleLogs = logs.slice(0, Math.min(2, logs.length));
     
     // Prepare the analysis data
     const analysisData = sampleLogs.map((log, index) => ({
@@ -80,7 +80,7 @@ export const detectSystemPromptStructure = async (logs, model) => {
         role: 'user',
         content: `Analyze these input data structures and determine where system prompts are most likely located:
 
-${JSON.stringify(analysisData.map(data => ({
+${JSON.stringify([analysisData[0]].map(data => ({
   logIndex: data.logIndex,
   input: data.input
 })), null, 2)}

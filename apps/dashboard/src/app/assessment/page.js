@@ -2,7 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Box, Button, FormControl, InputLabel, MenuItem, Select, Stack, TextField, Typography } from '@mui/material';
+import { Box, Button, FormControl, InputLabel, MenuItem, Select, Stack, TextField, Typography, Paper } from '@mui/material';
+import { SplitLayout } from '@/components/auth/split-layout';
 
 export default function PublicAssessmentPage() {
   const searchParams = useSearchParams();
@@ -39,7 +40,7 @@ export default function PublicAssessmentPage() {
     try {
       const body = {
         integrationId: Number(integrationId),
-        repoUrl: selectedRepo, // owner/repo
+        repoUrl: selectedRepo,
         branch: branch || null,
         preferLocalClone: true,
       };
@@ -58,39 +59,39 @@ export default function PublicAssessmentPage() {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" sx={{ mb: 2 }}>AI Assessment</Typography>
-      <Stack spacing={2} sx={{ maxWidth: 640 }}>
-        <TextField
-          label="Integration ID"
-          value={integrationId}
-          onChange={(e) => setIntegrationId(e.target.value)}
-          placeholder="e.g. 123"
-        />
-        <FormControl disabled={!integrationId || loadingRepos}>
-          <InputLabel id="repo-select-label">Repository</InputLabel>
-          <Select
-            labelId="repo-select-label"
-            label="Repository"
-            value={selectedRepo}
-            onChange={(e) => setSelectedRepo(e.target.value)}
-          >
-            {repos.map(r => (
-              <MenuItem key={r.id} value={`${r.owner}/${r.name}`}>{r.fullName}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <TextField
-          label="Branch (optional)"
-          value={branch}
-          onChange={(e) => setBranch(e.target.value)}
-          placeholder="main"
-        />
-        <Button variant="contained" onClick={handleStartAssessment} disabled={!canSubmit || submitting}>
-          {submitting ? 'Starting…' : 'Start Assessment'}
-        </Button>
-      </Stack>
-    </Box>
+    <SplitLayout>
+      <Paper elevation={8} sx={{ p: 4, borderRadius: 3 }}>
+        <Typography variant="h4" sx={{ mb: 2, fontWeight: 700 }}>AI Assessment</Typography>
+        <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
+          Select your GitHub repository and optionally a branch to run an AI assessment. We’ll analyze prompts and add a PR with findings.
+        </Typography>
+        <Stack spacing={2}>
+          <FormControl size="small" disabled={!integrationId || loadingRepos}>
+            <InputLabel id="repo-select-label">Repository</InputLabel>
+            <Select
+              labelId="repo-select-label"
+              label="Repository"
+              value={selectedRepo}
+              onChange={(e) => setSelectedRepo(e.target.value)}
+            >
+              {repos.map(r => (
+                <MenuItem key={r.id} value={`${r.owner}/${r.name}`}>{r.fullName}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <TextField
+            label="Branch (optional)"
+            value={branch}
+            onChange={(e) => setBranch(e.target.value)}
+            placeholder="main"
+            size="small"
+          />
+          <Button variant="contained" onClick={handleStartAssessment} disabled={!canSubmit || submitting}>
+            {submitting ? 'Starting…' : 'Start Assessment'}
+          </Button>
+        </Stack>
+      </Paper>
+    </SplitLayout>
   );
 }
 

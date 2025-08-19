@@ -8,7 +8,8 @@ import {
   testGitHubIntegration,
   deleteGitHubIntegration,
   assessRepoAndCreatePR,
-  listInstallationRepositories
+  listInstallationRepositories,
+  redirectToAssessmentByEmail
 } from '../controllers/githubController.js';
 import { authenticateJWT } from '../middleware/authMiddleware.js';
 
@@ -20,6 +21,7 @@ router.get('/callback', handleGitHubCallback);
 router.post('/webhook', handleGitHubWebhook);
 router.post('/assess-and-pr', assessRepoAndCreatePR);
 router.get('/installation-repos', listInstallationRepositories);
+router.get('/redirect-by-email', redirectToAssessmentByEmail);
 
 // Protected routes (require authentication)
 router.get('/integrations', authenticateJWT, getGitHubIntegrations);

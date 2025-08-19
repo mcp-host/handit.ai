@@ -62,12 +62,14 @@ export const initiateGitHubAuth = async (req, res) => {
 // Public endpoint: list repositories for a GitHub App installation (via integrationId)
 export const listInstallationRepositories = async (req, res) => {
   try {
-    const { integrationId } = req.query;
-    if (!integrationId) {
-      return res.status(400).json({ success: false, error: 'integrationId is required' });
+    const { integrationId, installationId } = req.query;
+    let integration = null;
+    if (integrationId) {
+      integration = await GitHubIntegration.findByPk(Number(integrationId));
+    } else if (installationId) {
+      integration = await GitHubIntegration.findOne({ where: { githubAppInstallationId: Number(installationId) } });
     }
 
-    const integration = await GitHubIntegration.findByPk(Number(integrationId));
     if (!integration) {
       return res.status(404).json({ success: false, error: 'GitHubIntegration not found' });
     }
@@ -90,9 +92,34 @@ export const listInstallationRepositories = async (req, res) => {
       private: r.private,
       defaultBranch: r.default_branch,
     }));
-    return res.status(200).json({ success: true, repositories: repos });
+    return res.status(200).json({ success: true, repositories: repos, integrationRecordId: integration.id, installationId: integration.githubAppInstallationId });
   } catch (error) {
     console.error('Error listing installation repositories:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// Public endpoint: redirect by email to assessment or GitHub App install
+export const redirectToAssessmentByEmail = async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'email is required' });
+    }
+
+    const integration = await GitHubIntegration.findOne({ where: { email } });
+    const frontendBase = process.env.FRONTEND_BASE_URL || process.env.DASHBOARD_URL || 'https://dashboard.handit.ai';
+    const installUrl = 'https://github.com/apps/handit-ai';
+
+    if (!integration || !integration.githubAppInstallationId) {
+      return res.redirect(302, installUrl);
+    }
+
+    const url = new URL('/assessment', frontendBase);
+    url.searchParams.set('installationId', String(integration.githubAppInstallationId));
+    return res.redirect(302, url.toString());
+  } catch (error) {
+    console.error('Error redirecting to assessment by email:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 };
