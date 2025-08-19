@@ -310,7 +310,7 @@ export default (sequelize, DataTypes) => {
   GitHubIntegration.init({
     companyId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       field: 'company_id',
     },
     githubAppInstallationId: {
@@ -353,6 +353,11 @@ export default (sequelize, DataTypes) => {
       type: DataTypes.STRING(500),
       allowNull: false,
       field: 'prompt_file_path',
+    },
+    email: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: 'email',
     },
     active: {
       type: DataTypes.BOOLEAN,
