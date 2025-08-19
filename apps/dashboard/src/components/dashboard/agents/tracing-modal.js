@@ -1781,11 +1781,15 @@ export function TracingModal({
         animated: true,
       }));
 
-    if (cycles.length > 1) {
-      setProcessedEdges([...updatedEdges, ...phantomEdges]);
-    } else {
-      setProcessedEdges([...updatedEdges]);
-    }
+      if (cycles.length > 1) {
+        // remove edges from node to the same node
+        const newEdges = updatedEdges.filter((edge) => edge.source !== edge.target);
+        const newPhantomEdges = phantomEdges.filter((edge) => edge.source !== edge.target);
+        setProcessedEdges([...newEdges, ...newPhantomEdges]);
+      } else {
+        const newEdges = updatedEdges.filter((edge) => edge.source !== edge.target);
+        setProcessedEdges([...newEdges]);
+      }
   }, [regularEdges, highlightedPath]);
   console.log('open', open);
   return (
