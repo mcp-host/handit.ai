@@ -98,7 +98,7 @@ export default function PublicAssessmentPage() {
             placeholder="main"
             size="small"
           />
-          <Button variant="contained" onClick={handleStartAssessment} disabled={!canSubmit || submitting}>
+          <Button variant="outlined" onClick={handleStartAssessment} disabled={!canSubmit || submitting}>
             {submitting ? 'Starting…' : 'Start Assessment'}
           </Button>
         </Stack>
