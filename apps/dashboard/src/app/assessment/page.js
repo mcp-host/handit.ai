@@ -8,6 +8,7 @@ import { SplitLayout } from '@/components/auth/split-layout';
 export default function PublicAssessmentPage() {
   const searchParams = useSearchParams();
   const [integrationId, setIntegrationId] = useState('');
+  const [installationId, setInstallationId] = useState('');
   const [repos, setRepos] = useState([]);
   const [selectedRepo, setSelectedRepo] = useState('');
   const [branch, setBranch] = useState('');
@@ -17,20 +18,31 @@ export default function PublicAssessmentPage() {
 
   useEffect(() => {
     const iid = searchParams.get('integrationId') || searchParams.get('integration_id') || '';
+    const instId = searchParams.get('installationId') || searchParams.get('installation_id') || '';
     if (iid) setIntegrationId(iid);
+    if (instId) setInstallationId(instId);
   }, [searchParams]);
 
   useEffect(() => {
-    if (!integrationId) return;
+    if (!integrationId && !installationId) return;
     setLoadingRepos(true);
-    fetch(`${apiBase}/api/git/installation-repos?integrationId=${integrationId}`)
+    const query = integrationId
+      ? `integrationId=${integrationId}`
+      : `installationId=${installationId}`;
+    fetch(`${apiBase}/git/installation-repos?${query}`)
       .then(r => r.json())
       .then(data => {
-        if (data?.success) setRepos(data.repositories || []);
+        if (data?.success) {
+          setRepos(data.repositories || []);
+          // If we came via installationId only, capture backend's integration record id
+          if (!integrationId && data.integrationRecordId) {
+            setIntegrationId(String(data.integrationRecordId));
+          }
+        }
       })
       .catch(() => {})
       .finally(() => setLoadingRepos(false));
-  }, [integrationId, apiBase]);
+  }, [integrationId, installationId, apiBase]);
 
   const canSubmit = useMemo(() => Boolean(integrationId && selectedRepo), [integrationId, selectedRepo]);
 
@@ -66,7 +78,7 @@ export default function PublicAssessmentPage() {
           Select your GitHub repository and optionally a branch to run an AI assessment. We’ll analyze prompts and add a PR with findings.
         </Typography>
         <Stack spacing={2}>
-          <FormControl size="small" disabled={!integrationId || loadingRepos}>
+          <FormControl size="small" disabled={!(integrationId || installationId) || loadingRepos}>
             <InputLabel id="repo-select-label">Repository</InputLabel>
             <Select
               labelId="repo-select-label"

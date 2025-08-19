@@ -3,7 +3,7 @@ import axios from 'axios';
 import GitHubClient from '../services/githubClient.js';
 import db from '../../models/index.js';
 import { assessRepositoryAI, buildAssessmentFromFilesMarkdown } from '../services/repoAIAssessmentService.js';
-const { GitHubIntegration, GitHubPullRequest, Company } = db;
+const { GitHubIntegration, GitHubPullRequest, Company, User } = db;
 
 /**
  * Initiate GitHub App installation flow
@@ -102,14 +102,30 @@ export const listInstallationRepositories = async (req, res) => {
 // Public endpoint: redirect by email to assessment or GitHub App install
 export const redirectToAssessmentByEmail = async (req, res) => {
   try {
+    const installUrl = 'https://github.com/apps/handit-ai';
+
     const { email } = req.query;
     if (!email) {
       return res.status(400).json({ success: false, error: 'email is required' });
     }
 
-    const integration = await GitHubIntegration.findOne({ where: { email } });
+    let integration = await GitHubIntegration.findOne({ where: { email } });
+    if (!integration) {
+      const user = await User.findOne({ where: { email } });
+      if (!user) {
+        return res.redirect(302, installUrl);
+      }
+      const company = await Company.findOne({ where: { id: user.companyId } });
+      if (!company) {
+        return res.redirect(302, installUrl);
+      }
+      integration = await GitHubIntegration.findOne({ where: { companyId: company.id } });
+      if (!integration) {
+        return res.redirect(302, installUrl);
+      }
+    }
+
     const frontendBase = process.env.FRONTEND_BASE_URL || process.env.DASHBOARD_URL || 'https://dashboard.handit.ai';
-    const installUrl = 'https://github.com/apps/handit-ai';
 
     if (!integration || !integration.githubAppInstallationId) {
       return res.redirect(302, installUrl);
