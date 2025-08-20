@@ -395,6 +395,9 @@ export const assessRepoAndCreatePR = async (req, res) => {
           files,
         });
 
+    // Create the assessment file to ensure there are commits for the PR
+    await upsertFile(github, owner, repo, 'docs/ai-assessment.md', assessmentMd, headBranch);
+
     // Create PR with assessment as description
     const prTitle = `AI assessment by handit.ai for ${owner}/${repo}`;
     
@@ -410,7 +413,17 @@ export const assessRepoAndCreatePR = async (req, res) => {
   }
 };
 
-
+async function upsertFile(github, owner, repo, path, content, branch) {
+  let sha = null;
+  try {
+    const existing = await github.getContent(owner, repo, path, branch);
+    if (existing && existing.sha) sha = existing.sha;
+  } catch {
+    // File likely does not exist; proceed with create
+  }
+  const message = `docs(assessment): add/update ${path}`;
+  await github.createOrUpdateFile(owner, repo, path, message, content, sha, branch);
+}
 
 // Deprecated local builders removed in favor of AI-generated assessment
 
