@@ -102,12 +102,13 @@ export const listInstallationRepositories = async (req, res) => {
 // Public endpoint: redirect by email to assessment or GitHub App install
 export const redirectToAssessmentByEmail = async (req, res) => {
   try {
-    const installUrl = 'https://github.com/apps/handit-ai';
 
     const { email } = req.query;
     if (!email) {
       return res.status(400).json({ success: false, error: 'email is required' });
     }
+
+    const installUrl = 'https://github.com/apps/handit-ai/installations/new?state=' + email;
 
     let integration = await GitHubIntegration.findOne({ where: { email } });
     if (!integration) {
@@ -154,24 +155,43 @@ export const handleGitHubCallback = async (req, res) => {
     }
 
     // Parse state to get company ID (if provided)
-    let companyId = null;
+    let slug = null;
     if (state) {
       const stateParts = state.split(':');
       if (stateParts.length === 2) {
-        companyId = stateParts[1];
+        slug = stateParts[1];
       } else {
-        companyId = state;
+        slug = state;
       }
     }
 
-    if (!companyId) {
+    if (!slug) {
       // If no company ID in state, redirect to dashboard to select company
       const dashboardUrl = process.env.DASHBOARD_BASE_URL || 'http://localhost:3000';
       return res.redirect(`${dashboardUrl}/github-success?installation_id=${installation_id}&needs_company=true`);
     }
 
     // Verify company exists
-    const company = await Company.findByPk(parseInt(companyId));
+    let companyId = null;
+    if (slug.includes('@')) {
+      const user = await User.findOne({ where: { email: slug } });
+      if (user) {
+        companyId = user.companyId;
+      } else {
+        const user = await User.create({
+          email: slug,
+          role: 'user',
+          password: crypto.randomBytes(16).toString('hex'),
+          firstName: 'Handit',
+          lastName: 'User',
+        });
+        const createdUser = await User.findByPk(user.id, {
+          attributes: { exclude: ['password'] },
+        });
+        companyId = createdUser.companyId;
+      }
+    }
+    const company = await Company.findByPk(parseInt(companyId)); 
     if (!company) {
       const dashboardUrl = process.env.DASHBOARD_BASE_URL || 'http://localhost:3000';
       return res.redirect(`${dashboardUrl}/github-success?error=company_not_found`);
