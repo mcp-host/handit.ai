@@ -1458,7 +1458,7 @@ export async function buildAssessmentFromFilesMarkdown({
   frameworksDetected = [],
   files = [],
 }) {
-  // Extract prompts from files and limit to 2 best ones
+  // Extract prompts from files using heuristics first
   let allPrompts = [];
   for (const file of files) {
     const prompts = extractPromptsFromContent(file.content || '');
@@ -1471,6 +1471,22 @@ export async function buildAssessmentFromFilesMarkdown({
         variables: p.variables || [],
         text: p.text,
       });
+    }
+  }
+
+  // If we don't have enough prompts, use AI to detect more
+  if (allPrompts.length < 2) {
+    console.log('🔍 Not enough prompts found heuristically, using AI detection...');
+    const remainingFiles = files.filter(
+      (f) => !allPrompts.some((p) => p.filePath === f.path)
+    );
+    const llmExtracted = await detectPromptsViaLLM({
+      files: remainingFiles,
+      maxPrompts: 2 - allPrompts.length,
+    });
+    for (const p of llmExtracted) {
+      if (allPrompts.length >= 2) break;
+      allPrompts.push(p);
     }
   }
 
@@ -1498,6 +1514,21 @@ export async function buildAssessmentFromFilesMarkdown({
     "Embed ethical considerations, fairness, and transparency in prompt design",
     "Manage token limits and context window to avoid truncation or loss of information"
   ];
+
+  // Basic provider/framework detection from file contents using existing query hints
+  const queries = [...buildHighSignalQueries()];
+  const detectedProviders = new Set(providersDetected);
+  const detectedFrameworks = new Set(frameworksDetected);
+  
+  for (const file of files) {
+    for (const q of queries) {
+      const probe = q.matchHint || q.query;
+      if (probe && file.content && file.content.includes(probe)) {
+        if (q.provider) detectedProviders.add(q.provider);
+        if (q.framework) detectedFrameworks.add(q.framework);
+      }
+    }
+  }
 
   const currentDate = new Date().toISOString().split('T')[0];
   const primaryModel = extractModelFromPrompts(selectedPrompts) || 'gpt-4o-mini';
@@ -1547,8 +1578,8 @@ OUTPUT REQUIREMENTS:
         '```',
         '',
         `Repository: ${repoOwner}/${repoName}`,
-        `Providers detected: ${providersDetected.join(', ') || 'none'}`,
-        `Frameworks detected: ${frameworksDetected.join(', ') || 'none'}`,
+        `Providers detected: ${Array.from(detectedProviders).join(', ') || 'none'}`,
+        `Frameworks detected: ${Array.from(detectedFrameworks).join(', ') || 'none'}`,
         `Scan date: ${currentDate}`,
         `Primary model: ${primaryModel}`,
         '',
