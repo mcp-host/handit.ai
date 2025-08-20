@@ -1244,7 +1244,7 @@ export async function generateComprehensiveAssessmentMarkdown({
   return md;
 }
 
-// Build assessment using exact file contents (deeper prompt extraction)
+// Build assessment using exact file contents (deeper prompt extraction) - max 2 prompts
 export async function buildAssessmentFromFilesMarkdown({
   repoOwner,
   repoName,
@@ -1252,50 +1252,183 @@ export async function buildAssessmentFromFilesMarkdown({
   frameworksDetected = [],
   files = [],
 }) {
-  const extracted = [];
+  // Extract prompts from files and limit to 2 best ones
+  let allPrompts = [];
   for (const file of files) {
     const prompts = extractPromptsFromContent(file.content || '');
-    if (prompts.length > 0) {
-      extracted.push({
+    for (const p of prompts) {
+      allPrompts.push({
         filePath: file.path,
-        prompts: prompts.map((p) => ({
-          type: p.type,
-          role: p.role || null,
-          model: p.model || null,
-          variables: p.variables || [],
-          text: p.text.length > 4000 ? p.text.slice(0, 4000) + '…' : p.text,
-          length: p.text.length,
-        })),
+        type: p.type,
+        role: p.role || null,
+        model: p.model || null,
+        variables: p.variables || [],
+        text: p.text,
       });
     }
+  }
+
+  // Limit to 2 prompts maximum, prioritize by quality/length
+  const selectedPrompts = allPrompts
+    .sort((a, b) => (b.text?.length || 0) - (a.text?.length || 0))
+    .slice(0, 2);
+
+  const bestPractices = [
+    "Be explicit with instructions and desired output",
+    "Add context and rationale for better alignment",
+    "Provide examples that reflect desired behaviors (few-shot prompting)",
+    "Guide thinking and reflection for multi-step reasoning (chain-of-thought)",
+    "Control the format of responses (specify structure, sections, or delimiters)",
+    "Match prompt style and tone to desired output style",
+    "Assign a role or persona to the AI for consistent style and expertise",
+    "Break large tasks into smaller, sequential prompts",
+    "Set explicit constraints on length, tone, and format",
+    "Prefer positive instructions over prohibitions",
+    "Use XML-like tags or other clear markers when strict formatting is required",
+    "Optimize parallel tool calling where applicable",
+    "Ask the model to quote or verify sources and allow it to say 'I don't know'",
+    "Repeat critical instructions in multiple parts of the prompt for reinforcement",
+    "Avoid focusing on passing tests or hard-coding; prefer general solutions",
+    "Embed ethical considerations, fairness, and transparency in prompt design",
+    "Manage token limits and context window to avoid truncation or loss of information"
+  ];
+
+  const currentDate = new Date().toISOString().split('T')[0];
+  const primaryModel = extractModelFromPrompts(selectedPrompts) || 'gpt-4o-mini';
+
+  function extractModelFromPrompts(prompts) {
+    for (const prompt of prompts) {
+      if (prompt.model) return prompt.model;
+    }
+    return null;
   }
 
   const messages = [
     {
       role: 'system',
-      content:
-        'You are a senior AI reliability engineer at handit.ai. Perform an in-depth audit of prompts and LLM usage. Identify concrete risks (jailbreak susceptibility, prompt injection vectors, PII leakage, bias, safety gaps), determinism issues, missing output schemas, and improvement opportunities. Reference specific files/prompts. Output clean, well-structured Markdown only.',
+      content: `You are a senior AI reliability engineer at handit.ai. Generate a structured assessment report following the EXACT format template provided. You must analyze the provided prompts and create a professional assessment with specific sections, scoring, and recommendations.
+
+CRITICAL FORMAT REQUIREMENTS:
+- Follow the exact structure: Header → Scorecard → Risk Heatmap → Findings & Improvement Levers → Next Steps → Business Impact
+- Use the exact scoring criteria: Context & Rationale (0-5), Format/Output Contract (0-5), Examples & Edge Cases (0-5), Determinism & Guardrails (0-5), Testability (0-5)
+- Score each prompt against the provided best practices list
+- Risk levels must be: High, Medium, Low with appropriate emojis (🔴 High, 🔶 Medium, 🟢 Low)
+- For each prompt, include: Original, Strengths, Risks, Improvement Levers, Evidence sections
+- Keep improvement levers as "levers" not "fixes"
+- Include business impact section with expected improvements
+- This will be used as a GitHub PR description
+
+OUTPUT REQUIREMENTS:
+- Generate clean Markdown only
+- Be specific and actionable
+- Base analysis on the actual prompt content provided against the best practices
+- Use professional, technical language
+- Include confidence notes about repo-only analysis
+- Preserve all variable placeholders in quoted prompt text (e.g., \${var}, {{var}}, {var})
+- IMPORTANT: In Original sections, show only the FIRST THREE LINES of each prompt followed by "..." to keep the report concise`
     },
     {
       role: 'user',
       content: [
+        'Prompts to analyze (max 2):',
+        '```json',
+        JSON.stringify(selectedPrompts, null, 2),
+        '```',
+        '',
+        'Best practices to evaluate against:',
+        '```text',
+        bestPractices.map((b, i) => `${i + 1}. ${b}`).join('\n'),
+        '```',
+        '',
         `Repository: ${repoOwner}/${repoName}`,
         `Providers detected: ${providersDetected.join(', ') || 'none'}`,
         `Frameworks detected: ${frameworksDetected.join(', ') || 'none'}`,
+        `Scan date: ${currentDate}`,
+        `Primary model: ${primaryModel}`,
         '',
-        'Extracted prompts (per file):',
-        '```json',
-        JSON.stringify(extracted, null, 2),
+        'Generate a structured assessment report following this EXACT format template.',
+        'IMPORTANT: When showing original prompt text, only include the FIRST THREE LINES followed by "..." to keep the report concise.',
+        '',
+        '```',
+        'Drop-in: 5-min AI Review – Prompt Best Practices',
+        '',
+        'Service: [Infer service name from prompts/repo]',
+        `Model: ${primaryModel} (prod)`,
+        `Repo scan date: ${currentDate}`,
+        'Assessor: handit assess (repo-only, no production data)',
+        '',
+        '1) Scorecard',
+        'Criterion	[Prompt1 Name]	[Prompt2 Name]',
+        'Context & Rationale (0–5)	[score]	[score]',
+        'Format/Output Contract	[score]	[score]',
+        'Examples & Edge Cases	[score]	[score]',
+        'Determinism & Guardrails	[score]	[score]',
+        'Testability	[score]	[score]',
+        '',
+        'Overall Risk: [🔴/🔶/🟢] [High/Medium/Low] ([both/all prompts])',
+        'Confidence: Medium (repo scan only, no runtime evals yet)',
+        '',
+        '2) Risk Heatmap (top issues)',
+        '',
+        '[Risk description] → [impact] ([Risk Level])',
+        '',
+        '[Additional risks...]',
+        '',
+        '3) Findings & Improvement Levers',
+        'A. Prompt: [Prompt Name]',
+        '',
+        'Original',
+        '',
+        '[First 3 lines of original prompt text...]',
+        '',
+        'Strengths',
+        '',
+        '[Bullet points of strengths]',
+        '',
+        'Risks',
+        '',
+        '[Bullet points of risks]',
+        '',
+        'Improvement Levers (not fixes)',
+        '',
+        '[Bullet points of improvement opportunities]',
+        '',
+        'Evidence (static scan)',
+        '[Evidence from repository analysis]',
+        '→ [Potential production impact]',
+        '',
+        '[Repeat for Prompt B if exists]',
+        '',
+        '4) Next Steps (with handit)',
+        '',
+        'Connect handit (1-line setup).',
+        '',
+        'Run baseline evals on your real logs:',
+        '',
+        '[specific metrics based on prompts].',
+        '',
+        'handit will experiment with improvements automatically.',
+        '',
+        'If a candidate passes tests on your real data, handit opens the PR.',
+        '',
+        '5) Business Impact (expected if improved)',
+        '',
+        '[Business benefits based on the specific prompts and risks identified]',
+        '',
+        '---',
+        '',
+        '*This PR was automatically generated by handit.ai Autonomous engineer*',
         '```',
         '',
-        'Produce ONE Markdown report with sections:',
-        '## Overview — synthesis of key findings',
-        '## Detected Stack — providers/frameworks and usage notes',
-        '## Prompt Inventory — table listing: file, type, role, chars, variables',
-        '## Deep Findings — for each prompt, list issues (severity High/Med/Low) with rationales and code-aware recommendations',
-        '## Actionable Improvements — prioritized checklist (with examples/snippets)',
-        '## Hygiene & Safety Checklist — determinism, input validation, schemas, logging, red teaming',
-        'Keep it specific and non-generic; base strictly on provided prompts.',
+        'IMPORTANT: Replace all bracketed placeholders with actual analysis. Be specific to the provided prompts. Use the exact structure and formatting shown above. Preserve all variable placeholders in quoted prompt text.',
+        '',
+        'CRITICAL RULES:',
+        '1. Evaluate each prompt against the provided best practices list',
+        '2. In Original sections, show ONLY the first 3 lines of each prompt + "..." (never show full prompts)',
+        '3. Score each criterion 0-5 based on how well the prompt follows best practices',
+        '4. Risk levels: 🔴 High, 🔶 Medium, 🟢 Low based on severity of gaps',
+        '5. Improvement levers should reference specific best practices that could help',
+        '6. Never assess more than 2 prompts total'
       ].join('\n'),
     },
   ];
@@ -1306,7 +1439,7 @@ export async function buildAssessmentFromFilesMarkdown({
     model: 'gpt-4o',
     provider: 'OpenAI',
     token,
-    temperature: 0.2,
+    temperature: 0.1,
   });
 
   const md =
