@@ -650,6 +650,8 @@ const extractProbe = (searchQuery) => {
   return tokens.find((t) => /[a-zA-Z]/.test(t)) || searchQuery;
 };
 
+
+
 export default {
   assessRepositoryAI,
   generateComprehensiveAssessmentMarkdown,
@@ -955,7 +957,7 @@ async function pickCandidatesFromHints({
 }) {
   const limitedList = fileList.slice(0, 5000); // cap size
   const treePreview = limitedList.join('\n');
-  const userContent = [
+  const hintContent = [
     `Repository: ${repoOwner}/${repoName}`,
     hintFilePath ? `Hint file path: ${hintFilePath}` : null,
     hintFunctionName ? `Hint function: ${hintFunctionName}` : null,
@@ -1058,10 +1060,9 @@ If you find fewer than 5 strong matches, **pad** with best-guess candidates usin
   const messages = [
     {
       role: 'system',
-      content:
-        'You are a code analysis assistant at handit.ai. Given hints and a repository tree, select candidate files likely to contain prompts for the agent. Respond with strict JSON only.',
+      content: systemContent,
     },
-    { role: 'user', content: systemContent },
+    { role: 'user', content: hintContent },
   ];
 
   const token = process.env.OPENAI_API_KEY;
@@ -1356,49 +1357,138 @@ export async function generatePromptBestPracticesAssessmentMarkdown({
     "Manage token limits and context window to avoid truncation or loss of information"
   ];
 
+  const currentDate = new Date().toISOString().split('T')[0];
+  const primaryModel = extractModelFromPrompts(normalized) || 'gpt-4o-mini';
+
+  function extractModelFromPrompts(prompts) {
+    for (const prompt of prompts) {
+      if (prompt.model) return prompt.model;
+    }
+    return null;
+  }
+  
   const messages = [
     {
       role: 'system',
-      content:
-        'You are a senior AI reliability engineer at handit.ai. Assess ONLY the provided prompts against  prompt-engineering best practices. Produce a professional Markdown report. Do NOT include file paths, roles, or metadata. Do NOT propose or rewrite prompts. Identify strengths, potential gaps, and risk indicators with severity. Note that confidence is limited because this is a static, initial assessment. Encourage setup completion so handit can automatically remediate later. Preserve all variable placeholders in any quoted prompt text (e.g., ${var}, {{var}}, {var}).',
+      content: `You are a senior AI reliability engineer at handit.ai. Generate a structured assessment report following the EXACT format template provided. You must analyze the provided prompts and create a professional assessment with specific sections, scoring, and recommendations.
+
+CRITICAL FORMAT REQUIREMENTS:
+- Follow the exact structure: Header → Scorecard → Risk Heatmap → Findings & Improvement Levers → Next Steps → Business Impact
+- Use the exact scoring criteria: Context & Rationale (0-5), Format/Output Contract (0-5), Examples & Edge Cases (0-5), Determinism & Guardrails (0-5), Testability (0-5)
+- Score each prompt against the provided best practices list
+- Risk levels must be: High, Medium, Low with appropriate emojis (🔴 High, 🔶 Medium, 🟢 Low)
+- For each prompt, include: Original, Strengths, Risks, Improvement Levers, Evidence sections
+- Keep improvement levers as "levers" not "fixes"
+- Include business impact section with expected improvements
+- This will be used as a GitHub PR description
+
+OUTPUT REQUIREMENTS:
+- Generate clean Markdown only
+- Be specific and actionable
+- Base analysis on the actual prompt content provided against the best practices
+- Use professional, technical language
+- Include confidence notes about repo-only analysis
+- Preserve all variable placeholders in quoted prompt text (e.g., \${var}, {{var}}, {var})
+- IMPORTANT: In Original sections, show only the FIRST THREE LINES of each prompt followed by "..." to keep the report concise`
     },
     {
       role: 'user',
       content: [
-        'Prompts under review (max 2) as JSON (for your analysis only):',
+        'Prompts to analyze:',
         '```json',
         JSON.stringify(normalized, null, 2),
         '```',
         '',
-        'Best practices to consider (for your analysis only):',
+        'Best practices to evaluate against:',
         '```text',
         bestPractices.map((b, i) => `${i + 1}. ${b}`).join('\n'),
         '```',
         '',
-        'Produce ONE professional Markdown document titled "## Prompt Best Practices Assessment". Include:',
-        '### Summary',
-        '- Brief overview of prompt quality and overall adherence to best practices.',
+        `Scan date: ${currentDate}`,
+        `Primary model: ${primaryModel}`,
         '',
-        '### Prompts',
-        'For each prompt (in order):',
-        '#### Original prompt',
-        '```text',
-        '(include the exact original prompt text here)',
+        'Generate a structured assessment report following this EXACT format template.',
+        'IMPORTANT: When showing original prompt text, only include the FIRST THREE LINES followed by "..." to keep the report concise.',
+        '',
         '```',
-        '#### Alignment with best practices',
-        '- Bullet list of strengths where the prompt aligns well.',
-        '#### Potential gaps and risks',
-        '- Bullet list of issues mapped to best practices with severity (High/Med/Low) and a short rationale.',
-        '- Add a confidence note (e.g., "Confidence: Low/Medium" due to static analysis).',
+        'Drop-in: 5-min AI Review – Prompt Best Practices',
         '',
-        '### Next steps',
-        'On next steps, tell the user to finish handit.ai setup using the cli, so handit can track the prompts, automatically evaluate and then create PRs to fix the issues.',
+        'Service: [Infer service name from prompts]',
+        `Model: ${primaryModel} (prod)`,
+        `Repo scan date: ${currentDate}`,
+        'Assessor: handit assess (repo-only, no production data)',
         '',
-        'Constraints:',
-        '- Do not include file paths, roles, types, or any metadata in the output.',
-        '- Do not rewrite or suggest new prompts at this stage.',
-        '- Keep it concise and practical.',
-        '- Do not mention the number of the best practice as the user does not know the order, if you are mentioning a best practice mention it with an small title or phrase that represents it'
+        '1) Scorecard',
+        'Criterion	[Prompt1 Name]	[Prompt2 Name]',
+        'Context & Rationale (0–5)	[score]	[score]',
+        'Format/Output Contract	[score]	[score]',
+        'Examples & Edge Cases	[score]	[score]',
+        'Determinism & Guardrails	[score]	[score]',
+        'Testability	[score]	[score]',
+        '',
+        'Overall Risk: [🔴/🔶/🟢] [High/Medium/Low] ([both/all prompts])',
+        'Confidence: Medium (repo scan only, no runtime evals yet)',
+        '',
+        '2) Risk Heatmap (top issues)',
+        '',
+        '[Risk description] → [impact] ([Risk Level])',
+        '',
+        '[Additional risks...]',
+        '',
+        '3) Findings & Improvement Levers',
+        'A. Prompt: [Prompt Name]',
+        '',
+        'Original',
+        '',
+        '[First 3 lines of original prompt text...]',
+        '',
+        'Strengths',
+        '',
+        '[Bullet points of strengths]',
+        '',
+        'Risks',
+        '',
+        '[Bullet points of risks]',
+        '',
+        'Improvement Levers (not fixes)',
+        '',
+        '[Bullet points of improvement opportunities]',
+        '',
+        'Evidence (static scan)',
+        '[Evidence from repository analysis]',
+        '→ [Potential production impact]',
+        '',
+        '[Repeat for Prompt B if exists]',
+        '',
+        '4) Next Steps (with handit)',
+        '',
+        'Connect handit (1-line setup).',
+        '',
+        'Run baseline evals on your real logs:',
+        '',
+        '[specific metrics based on prompts].',
+        '',
+        'handit will experiment with improvements automatically.',
+        '',
+        'If a candidate passes tests on your real data, handit opens the PR.',
+        '',
+        '5) Business Impact (expected if improved)',
+        '',
+        '[Business benefits based on the specific prompts and risks identified]',
+        '',
+        '---',
+        '',
+        '*This PR was automatically generated by handit.ai Autonomous engineer*',
+        '```',
+        '',
+        'IMPORTANT: Replace all bracketed placeholders with actual analysis. Be specific to the provided prompts. Use the exact structure and formatting shown above. Preserve all variable placeholders in quoted prompt text.',
+        '',
+        'CRITICAL RULES:',
+        '1. Evaluate each prompt against the provided best practices list',
+        '2. In Original sections, show ONLY the first 3 lines of each prompt + "..." (never show full prompts)',
+        '3. Score each criterion 0-5 based on how well the prompt follows best practices',
+        '4. Risk levels: 🔴 High, 🔶 Medium, 🟢 Low based on severity of gaps',
+        '5. Improvement levers should reference specific best practices that could help'
       ].join('\n'),
     },
   ];
