@@ -336,10 +336,14 @@ export const assessRepositoryAI = async ({
         indicators,
         snippet,
         score,
+        content: rec.content,
       });
     }
 
     candidates.sort((a, b) => b.score - a.score);
+
+    console.log('🔍 Candidates:', candidates);
+    console.log('after candidates')
 
     return {
       success: true,
@@ -362,6 +366,7 @@ export const assessRepositoryAI = async ({
       },
     };
   } catch (error) {
+    console.error('🔍 Error in repoAIAssessmentService:', error);
     return { success: false, error: error.message, stack: error.stack };
   }
 };

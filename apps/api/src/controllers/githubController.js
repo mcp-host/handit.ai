@@ -359,7 +359,7 @@ export const assessRepoAndCreatePR = async (req, res) => {
     const files = [];
     if (Array.isArray(selectedFiles) && selectedFiles.length > 0) {
       // Use the hints-selected files with content captured from local scan
-      for (const f of selectedFiles.slice(0, 2)) {
+      for (const f of selectedFiles.slice(0, 10)) {
         if (f && f.path && typeof f.content === 'string') {
           files.push({ path: f.path, content: f.content });
         }
@@ -369,10 +369,14 @@ export const assessRepoAndCreatePR = async (req, res) => {
       const topForContent = candidates.slice(0, 15);
       for (const c of topForContent) {
         try {
+          if (c.content) {
+            files.push({ path: c.filePath, content: c.content });
+          } else {  
           const file = await github.getContent(owner, repo, c.filePath, headBranch);
           if (file && file.content) {
-            const content = Buffer.from(file.content, 'base64').toString('utf-8');
-            files.push({ path: c.filePath, content });
+              const content = Buffer.from(file.content, 'base64').toString('utf-8');
+              files.push({ path: c.filePath, content });
+            }
           }
         } catch (err) {
           console.log(`⚠️  Could not read candidate file ${c.filePath}: ${err.message}`);
