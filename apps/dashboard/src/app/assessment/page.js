@@ -2,8 +2,9 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Box, Button, FormControl, InputLabel, MenuItem, Select, Stack, TextField, Typography, Paper, Stepper, Step, StepLabel, CircularProgress, Fade } from '@mui/material';
+import { Box, Button, FormControl, InputLabel, MenuItem, Select, Stack, TextField, Typography, Paper, Stepper, Step, StepLabel, CircularProgress, Fade, Alert, AlertTitle } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import LaunchIcon from '@mui/icons-material/Launch';
 import { SplitLayout } from '@/components/auth/split-layout';
 
 export default function PublicAssessmentPage() {
@@ -17,6 +18,8 @@ export default function PublicAssessmentPage() {
   const [submitting, setSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(-1);
   const [completedSteps, setCompletedSteps] = useState(new Set());
+  const [assessmentResult, setAssessmentResult] = useState(null);
+  const [error, setError] = useState(null);
   const apiBase = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE || '';
 
   const assessmentSteps = [
@@ -58,6 +61,8 @@ export default function PublicAssessmentPage() {
   const resetSteps = () => {
     setCurrentStep(-1);
     setCompletedSteps(new Set());
+    setAssessmentResult(null);
+    setError(null);
   };
 
   const handleStartAssessment = async () => {
@@ -83,6 +88,7 @@ export default function PublicAssessmentPage() {
         repoUrl: selectedRepo,
         branch: branch || null,
         preferLocalClone: true,
+        useHintsFlow: true,
       };
       const resp = await fetch(`${apiBase}/git/assess-and-pr`, {
         method: 'POST',
@@ -95,16 +101,20 @@ export default function PublicAssessmentPage() {
       setCompletedSteps(prev => new Set([...prev, 2]));
       setCurrentStep(-1);
       
-      alert(json?.success ? 'Assessment completed! Check the repository for the PR.' : (json?.error || 'Failed to start assessment'));
+      if (json?.success) {
+        setAssessmentResult({
+          prNumber: json.prNumber,
+          prUrl: json.prUrl,
+          repoName: selectedRepo
+        });
+      } else {
+        setError(json?.error || 'Failed to start assessment');
+      }
     } catch (e) {
-      alert('Failed to start assessment');
+      setError('Failed to start assessment');
       resetSteps();
     } finally {
       setSubmitting(false);
-      // Reset steps after a delay to show completion
-      setTimeout(() => {
-        if (!submitting) resetSteps();
-      }, 2000);
     }
   };
 
@@ -163,6 +173,50 @@ export default function PublicAssessmentPage() {
           </Fade>
         )}
 
+        {/* Success Message */}
+        {assessmentResult && (
+          <Fade in={Boolean(assessmentResult)}>
+            <Alert severity="success" sx={{ mb: 3 }}>
+              <AlertTitle>Assessment Completed Successfully! ✅</AlertTitle>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                Your AI assessment has been completed and is now available in your repository.
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Typography variant="body2">
+                  📋 <strong>Assessment Report:</strong> Available in <code>docs/ai-assessment.md</code>
+                </Typography>
+                <Typography variant="body2">
+                  🔗 <strong>Pull Request:</strong> #{assessmentResult.prNumber} in {assessmentResult.repoName}
+                </Typography>
+                {assessmentResult.prUrl && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<LaunchIcon />}
+                    href={assessmentResult.prUrl}
+                    target="_blank"
+                    sx={{ alignSelf: 'flex-start', mt: 1 }}
+                  >
+                    View Pull Request
+                  </Button>
+                )}
+              </Box>
+            </Alert>
+          </Fade>
+        )}
+
+        {/* Error Message */}
+        {error && (
+          <Fade in={Boolean(error)}>
+            <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+              <AlertTitle>Assessment Failed</AlertTitle>
+              <Typography variant="body2">
+                {error}
+              </Typography>
+            </Alert>
+          </Fade>
+        )}
+
         <Stack spacing={2}>
           <FormControl size="small" disabled={!(integrationId || installationId) || loadingRepos}>
             <InputLabel id="repo-select-label">Repository</InputLabel>
@@ -184,9 +238,25 @@ export default function PublicAssessmentPage() {
             placeholder="main"
             size="small"
           />
-          <Button variant="outlined" onClick={handleStartAssessment} disabled={!canSubmit || submitting}>
-            {submitting ? 'Running Assessment...' : 'Start Assessment'}
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button 
+              variant="outlined" 
+              onClick={handleStartAssessment} 
+              disabled={!canSubmit || submitting}
+              sx={{ flex: 1 }}
+            >
+              {submitting ? 'Running Assessment...' : 'Start Assessment'}
+            </Button>
+            {assessmentResult && (
+              <Button 
+                variant="text" 
+                onClick={resetSteps}
+                sx={{ whiteSpace: 'nowrap' }}
+              >
+                Run Another
+              </Button>
+            )}
+          </Box>
         </Stack>
       </Paper>
     </SplitLayout>
