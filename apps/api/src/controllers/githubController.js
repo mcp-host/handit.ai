@@ -178,17 +178,21 @@ export const handleGitHubCallback = async (req, res) => {
       if (user) {
         companyId = user.companyId;
       } else {
+        const company = await Company.create({
+          name: slug,
+          nationalId: slug,
+        });
         const user = await User.create({
           email: slug,
           role: 'user',
           password: crypto.randomBytes(16).toString('hex'),
           firstName: 'Handit',
           lastName: 'User',
+          companyId: company.id,
+          membershipId: 1,
         });
-        const createdUser = await User.findByPk(user.id, {
-          attributes: { exclude: ['password'] },
-        });
-        companyId = createdUser.companyId;
+
+        companyId = company.id;
       }
     }
     const company = await Company.findByPk(parseInt(companyId)); 
