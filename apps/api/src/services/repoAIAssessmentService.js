@@ -240,6 +240,81 @@ export const assessRepositoryAI = async ({
       }
     }
 
+    // If still no files found, try a broader search with common prompt patterns
+    if (!fileMap.size) {
+      console.log('🔍 No files found, trying broader search...');
+      const broadQueries = [
+        { name: 'broad_you_are', query: 'You are', matchHint: 'You are' },
+        { name: 'broad_system_role', query: 'system', matchHint: 'system' },
+        { name: 'broad_prompt', query: 'prompt', matchHint: 'prompt' },
+        { name: 'broad_template', query: 'template', matchHint: 'template' },
+      ];
+      
+      for (const bq of broadQueries) {
+        try {
+          const results = await githubClient.searchCode(
+            repoInfo.owner,
+            repoInfo.repo,
+            bq.query
+          );
+          for (const item of results.items || []) {
+            try {
+              const file = await githubClient.getContent(
+                repoInfo.owner,
+                repoInfo.repo,
+                item.path,
+                branch || undefined
+              );
+              if (!file || !file.content) continue;
+              const content = Buffer.from(file.content, 'base64').toString('utf-8');
+              if (!content || !content.includes(bq.matchHint)) continue;
+
+              const record = ensureFileRecord(fileMap, item.path, content, file.sha);
+              record.indicators.add(bq.name);
+            } catch {
+              // ignore file fetch errors
+            }
+          }
+        } catch {
+          // ignore search errors
+        }
+      }
+    }
+
+    // Final fallback: AI-powered file selection if still no files found
+    if (!fileMap.size) {
+      console.log('🔍 Still no files found, using AI to select important files...');
+      try {
+        usedStrategies.push('ai-file-selection');
+        const aiSelectedFiles = await selectImportantFilesWithAI({
+          githubClient,
+          repoOwner: repoInfo.owner,
+          repoName: repoInfo.repo,
+          branch: branch || undefined,
+        });
+        
+        for (const selectedFile of aiSelectedFiles) {
+          try {
+            const file = await githubClient.getContent(
+              repoInfo.owner,
+              repoInfo.repo,
+              selectedFile.path,
+              branch || undefined
+            );
+            if (!file || !file.content) continue;
+            const content = Buffer.from(file.content, 'base64').toString('utf-8');
+            
+            const record = ensureFileRecord(fileMap, selectedFile.path, content, file.sha);
+            record.indicators.add('ai-selected');
+          } catch {
+            // ignore file fetch errors
+          }
+        }
+      } catch (error) {
+        console.log('⚠️ AI file selection failed:', error.message);
+      }
+    }
+
     // Build candidates
     const candidates = [];
     for (const [path, rec] of fileMap.entries()) {
@@ -650,6 +725,131 @@ const extractProbe = (searchQuery) => {
   const tokens = (searchQuery || '').replace(/\s+/g, ' ').trim().split(' ');
   return tokens.find((t) => /[a-zA-Z]/.test(t)) || searchQuery;
 };
+
+// AI-powered file selection when no files are found through other methods
+async function selectImportantFilesWithAI({ githubClient, repoOwner, repoName, branch }) {
+  try {
+    // Get repository file tree
+    const fileList = await getRepositoryFileList(githubClient, repoOwner, repoName, branch);
+    
+    if (!fileList.length) {
+      console.log('⚠️ No files found in repository');
+      return [];
+    }
+
+    // Limit file list to avoid token limits
+    const limitedFileList = fileList.slice(0, 2000);
+    
+    const messages = [
+      {
+        role: 'system',
+        content: `You are a code analysis expert at handit.ai. Your task is to identify the most important files in a repository that are likely to contain AI/LLM prompts, configurations, or related code.
+
+From the provided file list, select up to 15 files that are most likely to contain:
+- LLM prompts (system, user, assistant messages)
+- AI configuration files
+- Prompt templates or constants
+- AI service implementations
+- Agent definitions or workflows
+
+Return STRICT JSON only:
+{ "files": [{"path": "file/path", "reason": "short reason"}], "rationale": "brief explanation" }
+
+Prioritize by:
+1. Files with names containing: prompt, system, template, ai, llm, agent, chat, message
+2. Configuration files (config, settings)
+3. Service files that might contain AI logic
+4. Main application files that might orchestrate AI calls`
+      },
+      {
+        role: 'user',
+        content: [
+          `Repository: ${repoOwner}/${repoName}`,
+          '',
+          'File list (relative paths):',
+          '```',
+          limitedFileList.join('\n'),
+          '```',
+          '',
+          'Select up to 10 most important files that likely contain AI/LLM prompts or related code.',
+          'Return JSON: { "files": [{"path": "...", "reason": "..."}], "rationale": "..." }'
+        ].join('\n')
+      }
+    ];
+
+    const token = process.env.OPENAI_API_KEY;
+    const completion = await generateAIResponse({
+      messages,
+      model: 'gpt-4o',
+      provider: 'OpenAI',
+      token,
+      temperature: 0.1,
+    });
+
+    const text = completion.text || completion.choices?.[0]?.message?.content || '';
+    
+    try {
+      const parsed = JSON.parse(text);
+      const files = Array.isArray(parsed?.files) ? parsed.files : [];
+      console.log('🤖 AI selected files:', files.map(f => f.path));
+      return files.slice(0, 15); // Ensure max 15 files
+    } catch {
+      console.log('⚠️ Failed to parse AI file selection response');
+      return [];
+    }
+  } catch (error) {
+    console.log('⚠️ AI file selection error:', error.message);
+    return [];
+  }
+}
+
+// Get complete file list from repository
+async function getRepositoryFileList(githubClient, owner, repo, branch, path = '', depth = 0) {
+  const maxDepth = 4; // Limit recursion depth
+  const files = [];
+  
+  if (depth > maxDepth) return files;
+  
+  try {
+    const contents = await githubClient.getContent(owner, repo, path, branch);
+    
+    if (Array.isArray(contents)) {
+      // Directory listing
+      for (const item of contents) {
+        if (item.type === 'file' && isSearchableFileRemote(item.name)) {
+          files.push(item.path);
+        } else if (item.type === 'dir' && isSearchableDirectoryRemote(item.name)) {
+          // Recursively get files from subdirectory
+          const subFiles = await getRepositoryFileList(githubClient, owner, repo, branch, item.path, depth + 1);
+          files.push(...subFiles);
+        }
+      }
+    }
+  } catch (error) {
+    console.log(`⚠️ Could not read directory ${path}:`, error.message);
+  }
+  
+  return files;
+}
+
+function isSearchableFileRemote(filename) {
+  const searchableExtensions = [
+    '.js', '.ts', '.jsx', '.tsx', '.py', '.java', '.go', '.php', '.rb', '.cs',
+    '.cpp', '.c', '.h', '.json', '.yaml', '.yml', '.md', '.txt', '.hbs', '.ejs'
+  ];
+  const idx = filename.lastIndexOf('.');
+  if (idx === -1) return false;
+  const extension = filename.toLowerCase().substring(idx);
+  return searchableExtensions.includes(extension);
+}
+
+function isSearchableDirectoryRemote(name) {
+  const skip = new Set([
+    '.git', 'node_modules', 'dist', 'build', 'coverage', '.next', 
+    '__pycache__', 'vendor', '.venv', 'venv', 'target', 'out'
+  ]);
+  return !skip.has(name.toLowerCase());
+}
 
 
 
