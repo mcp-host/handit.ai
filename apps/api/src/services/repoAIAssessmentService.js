@@ -865,6 +865,9 @@ export default {
   generatePromptBestPracticesAssessmentMarkdown,
 };
 
+// Export utility functions for reuse
+export { getDefaultBranchName, cloneRepoShallow };
+
 // —— Local clone utilities ——
 
 async function getDefaultBranchName(githubClient, owner, repo) {

@@ -392,9 +392,20 @@ const searchPromptInRepository = async (githubClient, owner, repo, originalPromp
   }
 
   // Remove duplicates based on file path
-  const uniqueLocations = locations.filter((location, index, array) => 
+  let uniqueLocations = locations.filter((location, index, array) => 
     array.findIndex(l => l.filePath === location.filePath) === index
   );
+
+  // If no results found via API search, try local clone approach
+  if (uniqueLocations.length === 0) {
+    console.log('🔄 No results from GitHub API, trying local clone search...');
+    try {
+      const localResults = await searchPromptViaLocalClone(githubClient, owner, repo, originalPrompt);
+      uniqueLocations = localResults;
+    } catch (error) {
+      console.log('⚠️ Local clone search failed:', error.message);
+    }
+  }
 
   return uniqueLocations;
 };
@@ -409,239 +420,193 @@ const generateSearchStrategies = (originalPrompt) => {
   const strategies = [];
   const prompt = originalPrompt.trim();
 
-  // Strategy 1: Full prompt (highest confidence)
-  strategies.push({
-    name: 'full_prompt',
-    query: escapeForSearch(prompt),
-    confidence: 1.0
-  });
-
-  strategies.push({
-    name: 'first_100_chars',
-    query: escapeForSearch(prompt.substring(0, 100)),
-    confidence: 1.0
-  });
-
-  // Strategy 2: First half of prompt
-  const firstHalf = prompt.substring(0, Math.floor(prompt.length / 2));
-  if (firstHalf.length > 20) {
+  // Strategy 1: First 50 characters (most likely to be unique and indexed quickly)
+  const first50 = prompt.substring(0, 50).trim();
+  if (first50.length > 15) {
     strategies.push({
-      name: 'first_half',
-      query: escapeForSearch(firstHalf),
-      confidence: 0.8
+      name: 'first_50_chars',
+      query: escapeForSearch(first50),
+      confidence: 0.9
     });
   }
 
-  // Strategy 3: Last half of prompt
-  const lastHalf = prompt.substring(Math.floor(prompt.length / 2));
-  if (lastHalf.length > 20) {
-    strategies.push({
-      name: 'last_half',
-      query: escapeForSearch(lastHalf),
-      confidence: 0.8
-    });
-  }
-
-  // Strategy 4: First quarter (for very long prompts)
-  if (prompt.length > 200) {
-    const firstQuarter = prompt.substring(0, Math.floor(prompt.length / 4));
-    if (firstQuarter.length > 30) {
-      strategies.push({
-        name: 'first_quarter',
-        query: escapeForSearch(firstQuarter),
-        confidence: 0.6
-      });
-    }
-  }
-
-  // Strategy 5: Key phrases (extract meaningful sentences)
-  const sentences = prompt.split(/[.!?]+/).filter(s => s.trim().length > 20);
+  // Strategy 2: First sentence or phrase
+  const sentences = prompt.split(/[.!?]+/).filter(s => s.trim().length > 10);
   if (sentences.length > 0) {
-    const keyPhrase = sentences[0].trim();
-    if (keyPhrase.length > 15) {
+    const firstSentence = sentences[0].trim().substring(0, 60); // Limit to 60 chars
+    if (firstSentence.length > 10) {
       strategies.push({
-        name: 'key_phrase',
-        query: escapeForSearch(keyPhrase),
-        confidence: 0.7
+        name: 'first_sentence',
+        query: escapeForSearch(firstSentence),
+        confidence: 0.8
       });
     }
   }
 
-  // Strategy 6: Middle sections (extract content from middle portions)
-  if (prompt.length > 100) {
-    const quarterLen = Math.floor(prompt.length / 4);
-    const middleSection = prompt.substring(quarterLen, prompt.length - quarterLen);
-    if (middleSection.length > 20) {
-      strategies.push({
-        name: 'middle_section',
-        query: escapeForSearch(middleSection),
-        confidence: 0.65
-      });
-    }
-  }
-
-  // Strategy 7: Divide and conquer - recursive chunking
-  const divideAndConquerStrategies = generateDivideAndConquerStrategies(prompt);
-  strategies.push(...divideAndConquerStrategies);
-
-  return strategies;
-};
-
-/**
- * Generates divide and conquer strategies by recursively splitting the prompt
- * 
- * @param {string} text - The text to divide
- * @param {number} depth - Current recursion depth
- * @param {string} prefix - Prefix for strategy naming
- * @returns {Array} Array of divide and conquer strategies
- */
-const generateDivideAndConquerStrategies = (text, depth = 0, prefix = 'divide') => {
-  const strategies = [];
-  const maxDepth = 3; // Prevent infinite recursion
-  const minWords = 3;
-  
-  if (depth >= maxDepth) return strategies;
-  
-  const words = text.trim().split(/\s+/);
-  if (words.length < minWords * 2) return strategies; // Need at least 6 words to split meaningfully
-  
-  const baseConfidence = 0.5 - (depth * 0.1); // Decrease confidence with depth
-  
-  // Split into thirds for better coverage
-  const thirdLength = Math.floor(words.length / 3);
-  
-  if (thirdLength >= minWords) {
-    // First third
-    const firstThird = words.slice(0, thirdLength).join(' ');
-    strategies.push({
-      name: `${prefix}_first_third_d${depth}`,
-      query: escapeForSearch(firstThird),
-      confidence: Math.max(baseConfidence, 0.2)
-    });
-    
-    // Middle third
-    const middleThird = words.slice(thirdLength, thirdLength * 2).join(' ');
-    strategies.push({
-      name: `${prefix}_middle_third_d${depth}`,
-      query: escapeForSearch(middleThird),
-      confidence: Math.max(baseConfidence, 0.2)
-    });
-    
-    // Last third
-    const lastThird = words.slice(thirdLength * 2).join(' ');
-    strategies.push({
-      name: `${prefix}_last_third_d${depth}`,
-      query: escapeForSearch(lastThird),
-      confidence: Math.max(baseConfidence, 0.2)
-    });
-    
-    // Recursively apply to each third if they're still large enough
-    if (thirdLength > minWords * 2) {
-      strategies.push(...generateDivideAndConquerStrategies(firstThird, depth + 1, `${prefix}_1st`));
-      strategies.push(...generateDivideAndConquerStrategies(middleThird, depth + 1, `${prefix}_mid`));
-      strategies.push(...generateDivideAndConquerStrategies(lastThird, depth + 1, `${prefix}_3rd`));
-    }
-  }
-  
-  return strategies;
-};
-
-/**
- * Generates word-based strategies focusing on meaningful word combinations
- * 
- * @param {string} text - The text to analyze
- * @returns {Array} Array of word-based strategies
- */
-const generateWordBasedStrategies = (text) => {
-  const strategies = [];
-  const words = text.trim().split(/\s+/).filter(word => word.length > 2);
-  
-  if (words.length < 3) return strategies;
-  
-  // Strategy: First 3-5 words
+  // Strategy 3: Key distinctive words (3-5 word combinations)
+  const words = prompt.split(/\s+/).filter(word => word.length > 3);
   if (words.length >= 3) {
-    const firstWords = words.slice(0, Math.min(5, words.length)).join(' ');
+    const keyWords = words.slice(0, 4).join(' '); // Max 4 words
     strategies.push({
-      name: 'first_words',
-      query: escapeForSearch(firstWords),
-      confidence: 0.55
+      name: 'key_words',
+      query: escapeForSearch(keyWords),
+      confidence: 0.7
     });
   }
-  
-  // Strategy: Last 3-5 words
-  if (words.length >= 3) {
-    const lastWords = words.slice(-Math.min(5, words.length)).join(' ');
+
+  // Strategy 4: Unique phrases (look for quoted text or distinctive patterns)
+  const quotedMatches = prompt.match(/"([^"]{10,50})"/g);
+  if (quotedMatches && quotedMatches.length > 0) {
+    const quotedText = quotedMatches[0].replace(/"/g, '').trim();
     strategies.push({
-      name: 'last_words',
-      query: escapeForSearch(lastWords),
-      confidence: 0.55
+      name: 'quoted_text',
+      query: escapeForSearch(quotedText),
+      confidence: 0.85
     });
   }
-  
-  // Strategy: Important words (longer words, typically more meaningful)
-  const importantWords = words
-    .filter(word => word.length > 4)
-    .slice(0, 5)
-    .join(' ');
-  
-  if (importantWords.split(' ').length >= 3) {
-    strategies.push({
-      name: 'important_words',
-      query: escapeForSearch(importantWords),
-      confidence: 0.45
-    });
-  }
-  
-  // Strategy: Every nth word pattern (skip words for broader matching)
-  if (words.length > 6) {
-    const nthWords = words.filter((_, index) => index % 2 === 0).slice(0, 6).join(' ');
-    if (nthWords.split(' ').length >= 3) {
-      strategies.push({
-        name: 'nth_words_pattern',
-        query: escapeForSearch(nthWords),
-        confidence: 0.35
-      });
-    }
-  }
-  
-  return strategies;
+
+  // Limit to max 5 strategies to avoid overwhelming the API
+  return strategies.slice(0, 5);
 };
 
-/**
- * Generates overlapping window strategies for better coverage
- * 
- * @param {string} text - The text to analyze
- * @returns {Array} Array of overlapping window strategies
- */
-const generateOverlappingWindowStrategies = (text) => {
-  const strategies = [];
-  const words = text.trim().split(/\s+/);
-  
-  if (words.length < 6) return strategies; // Need enough words for meaningful windows
-  
-  const windowSize = Math.min(8, Math.floor(words.length / 3)); // Adaptive window size
-  const stepSize = Math.max(2, Math.floor(windowSize / 2)); // 50% overlap
-  
-  let windowIndex = 0;
-  for (let i = 0; i <= words.length - windowSize; i += stepSize) {
-    const window = words.slice(i, i + windowSize).join(' ');
-    const wordsInWindow = window.split(' ').length;
+// Local clone search fallback when GitHub API fails - reuses existing utilities
+async function searchPromptViaLocalClone(githubClient, owner, repo, originalPrompt) {
+  // Import the existing utilities from repoAIAssessmentService
+  const { cloneRepoShallow, getDefaultBranchName } = await import('./repoAIAssessmentService.js');
+  const { rm } = await import('fs/promises');
+
+  try {
+    // Get default branch and clone using existing utilities
+    const defaultBranch = await getDefaultBranchName(githubClient, owner, repo);
+    const localPath = await cloneRepoShallow({
+      owner,
+      repo,
+      token: githubClient.token,
+      branch: defaultBranch,
+    });
+
+    // Search for prompt in local files using simple text matching
+    const locations = await searchPromptInLocalFiles(localPath, originalPrompt);
     
-    if (wordsInWindow >= 3) {
-      strategies.push({
-        name: `window_${windowIndex}`,
-        query: escapeForSearch(window),
-        confidence: 0.4 - (windowIndex * 0.05) // Decreasing confidence for later windows
-      });
-      windowIndex++;
+    // Cleanup
+    await rm(localPath, { recursive: true, force: true });
+    
+    return locations;
+
+  } catch (error) {
+    console.log('⚠️ Local clone search error:', error.message);
+    return [];
+  }
+}
+
+// Search for prompt text in local repository files using simple text matching
+async function searchPromptInLocalFiles(baseDir, originalPrompt) {
+  const { readFile } = await import('fs/promises');
+  const path = await import('path');
+  
+  const results = [];
+  const searchQueries = generateShortSearchQueries(originalPrompt);
+  
+  // Use existing file listing utility pattern
+  const files = await listFilesRecursivePrompt(baseDir, 0, 4);
+  
+  for (const filePath of files) {
+    try {
+      const content = await readFile(filePath, 'utf-8');
+      
+      // Try each search query
+      for (const query of searchQueries) {
+        if (content.includes(query.text)) {
+          const relativePath = path.relative(baseDir, filePath);
+          results.push({
+            filePath: relativePath,
+            content: content,
+            sha: null, // No SHA for local clone
+            matchedQuery: query.text,
+            strategy: 'local_clone',
+            confidence: query.confidence
+          });
+          break; // Found match, no need to try other queries for this file
+        }
+      }
+    } catch {
+      // Skip files that can't be read
     }
-    
-    // Limit number of windows to prevent too many strategies
-    if (windowIndex >= 5) break;
   }
   
-  return strategies;
-};
+  return results;
+}
+
+// File listing utility similar to existing one but for prompt search
+async function listFilesRecursivePrompt(dir, depth, maxDepth) {
+  const { readdir } = await import('fs/promises');
+  const path = await import('path');
+  
+  const collected = [];
+  if (depth > maxDepth) return collected;
+  
+  try {
+    const entries = await readdir(dir, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        // Skip common build/cache directories
+        if (['node_modules', '.git', 'dist', 'build', 'coverage', '.next', '__pycache__'].includes(entry.name)) {
+          continue;
+        }
+        const sub = await listFilesRecursivePrompt(full, depth + 1, maxDepth);
+        collected.push(...sub);
+      } else if (entry.isFile()) {
+        // Only include searchable file types
+        const ext = path.extname(entry.name).toLowerCase();
+        if (['.js', '.ts', '.jsx', '.tsx', '.py', '.json', '.yaml', '.yml', '.md', '.txt'].includes(ext)) {
+          collected.push(full);
+        }
+      }
+    }
+  } catch {
+    // Skip directories that can't be read
+  }
+  
+  return collected;
+}
+
+// Generate short, specific search queries from a prompt
+function generateShortSearchQueries(prompt) {
+  const queries = [];
+  const text = prompt.trim();
+  
+  // First 30 characters
+  if (text.length > 20) {
+    queries.push({
+      text: text.substring(0, 30).trim(),
+      confidence: 0.9
+    });
+  }
+  
+  // First sentence up to 50 chars
+  const sentences = text.split(/[.!?]+/);
+  if (sentences.length > 0 && sentences[0].trim().length > 10) {
+    const firstSentence = sentences[0].trim().substring(0, 50);
+    queries.push({
+      text: firstSentence,
+      confidence: 0.8
+    });
+  }
+  
+  // Key words (first 3-4 meaningful words)
+  const words = text.split(/\s+/).filter(w => w.length > 3);
+  if (words.length >= 3) {
+    const keyWords = words.slice(0, 3).join(' ');
+    queries.push({
+      text: keyWords,
+      confidence: 0.7
+    });
+  }
+  
+  return queries.slice(0, 3); // Max 3 queries for efficiency
+}
 
 /**
  * Escapes special characters for GitHub search
