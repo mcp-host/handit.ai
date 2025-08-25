@@ -414,6 +414,7 @@ export const assessRepoAndCreatePR = async (req, res) => {
       companyId: integration.companyId,
       repoUrl: repoUrl,
       assessmentResult: JSON.stringify(candidates),
+      githubIntegrationId: integration.id,
       type: 'repo_assessment',
       prNumber: pr.number,
       prUrl: pr.html_url,
