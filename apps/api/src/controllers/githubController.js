@@ -410,6 +410,15 @@ export const assessRepoAndCreatePR = async (req, res) => {
 
     const pr = await github.createPullRequest(owner, repo, prTitle, headBranch, baseBranch, prBody);
 
+    await GitHubPullRequest.create({
+      companyId: integration.companyId,
+      repoUrl: repoUrl,
+      assessmentResult: JSON.stringify(candidates),
+      type: 'repo_assessment',
+      prNumber: pr.number,
+      prUrl: pr.html_url,
+      branch: headBranch,
+    });
     return res.status(200).json({ success: true, prNumber: pr.number, prUrl: pr.html_url, branch: headBranch, summary: { providersDetected, frameworksDetected, candidates: candidates.length } });
   } catch (error) {
     console.error('Error in assessRepoAndCreatePR:', error);

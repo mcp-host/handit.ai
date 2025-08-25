@@ -68,7 +68,7 @@ export default (sequelize, DataTypes) => {
     },
     modelId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       field: 'model_id',
     },
     prNumber: {
@@ -81,14 +81,24 @@ export default (sequelize, DataTypes) => {
       allowNull: false,
       field: 'pr_url',
     },
+    type: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      defaultValue: 'prompt_optimization',
+    },
+    assessmentResult: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      field: 'assessment_result',
+    },
     oldPrompt: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: true,
       field: 'old_prompt',
     },
     newPrompt: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: true,
       field: 'new_prompt',
     },
     metricsImprovement: {
@@ -98,7 +108,7 @@ export default (sequelize, DataTypes) => {
     },
     status: {
       type: DataTypes.ENUM('open', 'merged', 'closed'),
-      allowNull: false,
+      allowNull: true,
       defaultValue: 'open',
     },
     createdAt: {

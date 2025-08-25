@@ -342,8 +342,12 @@ export const assessRepositoryAI = async ({
 
     candidates.sort((a, b) => b.score - a.score);
 
-    console.log('🔍 Candidates:', candidates);
-    console.log('after candidates')
+    await models.GitHubPullRequest.create({
+      companyId,
+      repoUrl: repoUrl,
+      assessmentResult: JSON.stringify(candidates),
+      type: 'repo_assessment',
+    });
 
     return {
       success: true,
