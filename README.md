@@ -615,6 +615,27 @@ const response = await openai.chat.completions.create({
 **Need Help?** Join our [Discord community](https://discord.gg/wZbW9Bu5) or check [GitHub Issues](https://github.com/Handit-AI/handit.ai-docs/issues)
 
 ---
+## 🎯 Examples
+
+### 🏆 **[Unstructured to Structured](https://github.com/Handit-AI/handit-examples/tree/main/examples/unstructured-to-structured)**
+
+Self-improving AI agent that automatically converts messy, unstructured documents into clean, structured data and CSV tables. Perfect for processing invoices, purchase orders, contracts, medical reports, and any other document types. But here's the kicker - **it actually gets better at its job over time**.
+
+**[Source Code →](https://github.com/Handit-AI/handit-examples/tree/main/examples/unstructured-to-structured)**
+
+> ![Unstructured to Structured in action](https://raw.githubusercontent.com/Handit-AI/handit-examples/main/examples/unstructured-to-structured/assets/cover/cover.gif)
+
+**Key Features:** ✨
+- **Schema Inference** 🔍: AI analyzes documents and creates optimal JSON structure
+- **Data Extraction** 📊: Maps document fields to schema with confidence scoring
+- **CSV Generation** 📋: Automatically creates organized tables for data visualization
+- **Multimodal Support** 🖼️: Handles images, PDFs, and text files
+- **Session Management** 🗂️: Isolated processing for different document batches
+- **Self-improvement** 🧠: Handit observes every agent interaction, and if a failure is detected, it automatically fixes it
+
+**Technologies:** 🛠️ Python, LangGraph, LangChain, OpenAI, FastAPI, Pandas, Handit.ai
+
+---
 
 ## 🌐 Language Support
 
