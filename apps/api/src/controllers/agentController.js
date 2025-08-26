@@ -68,7 +68,7 @@ export const updateBySlug = async (req, res) => {
     let slug =  req.params.slug;
     const { userObject } = req;
     const { companyId } = userObject;
-    slug = generateSlug(req.body.name);
+    slug = generateSlug(slug);
 
 
     const agent = await Agent.findOne({ where: { slug, companyId } });
@@ -90,8 +90,8 @@ export const getAgentBySlug = async (req, res) => {
     let slug = req.params.slug;
     const { userObject } = req;
     const { companyId } = userObject;
-    
-    slug = generateSlug(req.body.name);
+    slug = generateSlug(slug);
+
     const agent = await Agent.findOne({ where: { slug, companyId } });
     if (!agent) {
       return res.status(404).json({ error: 'Agent not found' });
