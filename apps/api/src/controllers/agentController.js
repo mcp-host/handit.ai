@@ -16,6 +16,7 @@ import { updateAgentEntriesCache } from '../services/agentService.js';
 import { parseAgentConfig } from '../services/agentConfigParser.js';
 import { createAgentFromConfig } from '../services/agentCreationService.js';
 import { createAgentFromTracing } from '../services/agentTracingService.js';
+import { generateSlug } from '../utils/slugGenerator.js';
 
 const { Agent, AgentNode, Model, Company, AgentConnection } = db;
 
@@ -64,9 +65,11 @@ export const update = async (req, res) => {
 
 export const updateBySlug = async (req, res) => {
   try {
-    const slug =  req.params.slug;
+    let slug =  req.params.slug;
     const { userObject } = req;
     const { companyId } = userObject;
+    slug = generateSlug(req.body.name);
+
 
     const agent = await Agent.findOne({ where: { slug, companyId } });
     if (!agent) {
@@ -84,10 +87,11 @@ export const updateBySlug = async (req, res) => {
 
 export const getAgentBySlug = async (req, res) => {
   try {
-    const slug = req.params.slug;
+    let slug = req.params.slug;
     const { userObject } = req;
     const { companyId } = userObject;
     
+    slug = generateSlug(req.body.name);
     const agent = await Agent.findOne({ where: { slug, companyId } });
     if (!agent) {
       return res.status(404).json({ error: 'Agent not found' });
