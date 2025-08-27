@@ -132,6 +132,11 @@ export default (sequelize, DataTypes) => {
       field: 'demo_agent',
       comment: 'Flag to indicate if agent is a demo agent for testing'
     },
+    tracingSchema: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      field: 'tracing_schema'
+    }
   }, {
     sequelize,
     modelName: 'Agent',
