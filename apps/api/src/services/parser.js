@@ -29,8 +29,8 @@ export const parseContext = (data, model = null) => {
   const systemMessages = [];
   
   const extractSystemContent = (item) => {
-    if (item?.input?.options?.systemMessage || item?.systemMessage || item?.options?.systemMessage) {
-      systemMessages.push(item?.input?.options?.systemMessage || item?.systemMessage || item?.options?.systemMessage);
+    if (item?.input?.options?.systemMessage || item?.systemMessage || item?.options?.systemMessage || item?.input?.options?.systemPromptTemplate) {
+      systemMessages.push(item?.input?.options?.systemMessage || item?.systemMessage || item?.options?.systemMessage || item?.input?.options?.systemPromptTemplate);
       return;
     }
     if (!item) return;
@@ -40,6 +40,9 @@ export const parseContext = (data, model = null) => {
     } else if (typeof item === 'object') {
       if (item?.input?.options?.systemMessage) {
         systemMessages.push(item.input.options.systemMessage);
+      }
+      if (item?.input?.options?.systemPromptTemplate) {
+        systemMessages.push(item.input.options.systemPromptTemplate);
       }
       if (item.role === 'system' && item.content) {
         systemMessages.push(item.content);
