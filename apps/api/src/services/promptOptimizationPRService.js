@@ -423,7 +423,7 @@ const generateSearchStrategies = (originalPrompt) => {
   // Strategy 1: First 50 characters (most likely to be unique and indexed quickly)
   const first50 = prompt.substring(0, 50).trim();
   if (first50.length > 15) {
-    strategies.push({
+  strategies.push({
       name: 'first_50_chars',
       query: escapeForSearch(first50),
       confidence: 0.9
@@ -435,10 +435,10 @@ const generateSearchStrategies = (originalPrompt) => {
   if (sentences.length > 0) {
     const firstSentence = sentences[0].trim().substring(0, 60); // Limit to 60 chars
     if (firstSentence.length > 10) {
-      strategies.push({
+    strategies.push({
         name: 'first_sentence',
         query: escapeForSearch(firstSentence),
-        confidence: 0.8
+      confidence: 0.8
       });
     }
   }
@@ -447,18 +447,18 @@ const generateSearchStrategies = (originalPrompt) => {
   const words = prompt.split(/\s+/).filter(word => word.length > 3);
   if (words.length >= 3) {
     const keyWords = words.slice(0, 4).join(' '); // Max 4 words
-    strategies.push({
+      strategies.push({
       name: 'key_words',
       query: escapeForSearch(keyWords),
-      confidence: 0.7
-    });
+        confidence: 0.7
+      });
   }
 
   // Strategy 4: Unique phrases (look for quoted text or distinctive patterns)
   const quotedMatches = prompt.match(/"([^"]{10,50})"/g);
   if (quotedMatches && quotedMatches.length > 0) {
     const quotedText = quotedMatches[0].replace(/"/g, '').trim();
-    strategies.push({
+      strategies.push({
       name: 'quoted_text',
       query: escapeForSearch(quotedText),
       confidence: 0.85

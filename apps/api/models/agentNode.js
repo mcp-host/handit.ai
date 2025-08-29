@@ -37,6 +37,11 @@ export default (sequelize, DataTypes) => {
       allowNull: true,
       comment: 'Optional identifier for the node, primarily used for tool types'
     },
+    group: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: 'Group identifier for the node'
+    },
     initialNode: {
       type: DataTypes.BOOLEAN,
       allowNull: false,

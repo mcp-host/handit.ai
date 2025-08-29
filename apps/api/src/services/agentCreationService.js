@@ -73,6 +73,7 @@ export const createAgentFromConfig = async (config, companyId, isN8N = false) =>
             model: model.id,
             description: nodeConfig.description
           },
+          group: nodeConfig.group,
           modelId: model.id,
           slug: nodeConfig.slug || generateSlug(nodeConfig.name)
         });
@@ -82,6 +83,7 @@ export const createAgentFromConfig = async (config, companyId, isN8N = false) =>
           agentId: agent.id,
           name: nodeConfig.name,
           type: 'tool',
+          group: nodeConfig.group,
           config: {
             position: nodeConfig.position,
             description: nodeConfig.description,

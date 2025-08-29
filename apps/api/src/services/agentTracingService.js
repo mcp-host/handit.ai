@@ -49,7 +49,8 @@ export const createAgentFromTracing = async (agentLog, companyId) => {
         type: originalNode.type,
         description: originalNode.config?.description || '',
         position: originalNode.config?.position || { x: 0, y: 0 },
-        slug: generateSlug(originalNode.name)
+        slug: generateSlug(originalNode.name),
+        group: originalNode.group
       };
 
       // If it's a model node, add model configuration

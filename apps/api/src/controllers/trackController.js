@@ -100,7 +100,8 @@ export const bulkTrack = async (req, res) => {
             nodeName: model?.name || nodeName,
             toolType: item.toolType || 'HTTP',
             description: model?.description || 'Automatically created node',
-            agentLogId: executionId
+            agentLogId: executionId,
+            group: item.group
           });
 
           if (agentNode.type === 'model') {
