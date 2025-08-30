@@ -70,6 +70,8 @@ export const bulkTrack = async (req, res) => {
 
     let executionId = log.dataValues.id;
     // Process each item sequentially to preserve order
+    let newNodeCreated = false;
+
     const results = [];
     for (let itemIdx = 0; itemIdx < items.length; itemIdx++) {
       const item = items[itemIdx];
@@ -89,7 +91,6 @@ export const bulkTrack = async (req, res) => {
             } 
           } 
         });
-        let newNodeCreated = false;
 
         // For each agent, find or create the node
         for (const agent of agents) {
@@ -146,14 +147,14 @@ export const bulkTrack = async (req, res) => {
           }
         }
 
-        if (newNodeCreated) {
-          await repositionAgentNodes(agent, true);
-        }
+
       } catch (err) {
         results.push({ node: item.id, error: err.message });
       }
     }
-
+    if (newNodeCreated) {
+      await repositionAgentNodes(agent, true);
+    }
     const agentLog = await AgentLog.findByPk(executionId);
     if (agentLog) {
       await agentLog.update({
