@@ -10,7 +10,7 @@
 'use client';
 
 import * as React from 'react';
-import ReactFlow, { Background, Controls, ControlButton, MiniMap } from 'reactflow';
+import ReactFlow, { Background, Controls, ControlButton, MiniMap, MarkerType } from 'reactflow';
 
 import 'reactflow/dist/style.css';
 
@@ -60,6 +60,7 @@ export const AgentMonitoring = ({
   // Flow state
   const [nodes, setNodes] = React.useState([]);
   const [edges, setEdges] = React.useState(initialEdges);
+  const [processedEdges, setProcessedEdges] = React.useState([]);
   const [selectedEntry, setSelectedEntry] = React.useState(null);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
 
@@ -163,6 +164,109 @@ export const AgentMonitoring = ({
     setEdges(initialEdges);
   }, [initialEdges]);
 
+  // Helper function to get node position
+  const getNodePosition = (nodeId) => {
+    const node = nodes.find(n => n.id === nodeId);
+    return node?.position || { x: 0, y: 0 };
+  };
+
+  // Process edges with intelligent routing
+  React.useEffect(() => {
+    if (!edges.length || !nodes.length) {
+      setProcessedEdges([]);
+      return;
+    }
+
+    const processEdges = (edgesToProcess) => {
+      // Remove self-loops
+      let filteredEdges = edgesToProcess.filter((edge) => edge.source !== edge.target);
+      
+      // Group edges by their endpoints to find bidirectional pairs
+      const edgeMap = new Map();
+      filteredEdges.forEach(edge => {
+        const sourcePos = getNodePosition(edge.source);
+        const targetPos = getNodePosition(edge.target);
+        
+        // Create a key for the edge pair (sorted to handle both directions)
+        const key = [edge.source, edge.target].sort().join('-');
+        
+        if (!edgeMap.has(key)) {
+          edgeMap.set(key, []);
+        }
+        
+        edgeMap.get(key).push({
+          ...edge,
+          sourcePos,
+          targetPos,
+          isUpward: sourcePos.y > targetPos.y // source is below target (bottom to top)
+        });
+      });
+
+      // Process each edge group
+      const finalEdges = [];
+      
+      edgeMap.forEach((edgeGroup, key) => {
+        // For agent monitoring, we just want to show simple directional lines
+        // Take the first edge in each group (avoid duplicates)
+        const edge = edgeGroup[0];
+        const sourcePos = edge.sourcePos;
+        const targetPos = edge.targetPos;
+        
+
+        
+        // Calculate if nodes are at same level (horizontal connection)
+        const isHorizontal = Math.abs(sourcePos.y - targetPos.y) < 50; // 50px tolerance for "same level"
+        const isLeftToRight = sourcePos.x < targetPos.x;
+        
+        if (isHorizontal) {
+          // Horizontal connection - use left/right handles with straight lines and arrow
+          finalEdges.push({
+            ...edge,
+            sourceHandle: isLeftToRight ? 'right' : 'left',
+            targetHandle: isLeftToRight ? 'left' : 'right',
+            type: 'straight',
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: edge.style?.stroke || '#a7a7ab',
+              width: 8,
+              height: 8,
+            }
+          });
+        } else if (edge.isUpward) {
+          // Bottom-to-top connection - start from top of bottom node, end at bottom of top node
+          finalEdges.push({
+            ...edge,
+            sourceHandle: 'top',    // Start from top of source node (the lower node)
+            targetHandle: 'bottom', // End at bottom of target node (the upper node)
+            type: 'smart',
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: edge.style?.stroke || '#a7a7ab',
+              width: 8,
+              height: 8,
+            }
+          });
+        } else {
+          // Regular top-to-bottom vertical connection
+          finalEdges.push({
+            ...edge,
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: edge.style?.stroke || '#a7a7ab',
+              width: 8,
+              height: 8,
+            }
+          });
+        }
+      });
+
+      return finalEdges;
+    };
+
+    const processed = processEdges(edges);
+    setProcessedEdges(processed);
+  }, [edges, nodes]);
+
   /**
    * Handles toggling fullscreen mode
    */
@@ -212,7 +316,7 @@ export const AgentMonitoring = ({
               <ReactFlow
                 key={agentId}
                 nodes={nodes}
-                edges={edges}
+                edges={processedEdges}
                 nodeTypes={nodeTypes}
                 nodesDraggable={false}
                 nodesConnectable={false}
@@ -276,7 +380,7 @@ export const AgentMonitoring = ({
           <ReactFlow
             key={`${agentId}-fullscreen`}
             nodes={nodes}
-            edges={edges}
+            edges={processedEdges}
             nodeTypes={nodeTypes}
             fitView
             nodesDraggable={false}

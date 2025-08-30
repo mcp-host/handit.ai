@@ -1206,7 +1206,7 @@ export function TracingModal({
   preSelectedNodeId = null,
 }) {
   // Flag to disable cycles functionality - set to true to show all entries in one flow
-  const [disableCycles, setDisableCycles] = React.useState(false);
+  const [disableCycles, setDisableCycles] = React.useState(true);
   
   const [selectedNode, setSelectedNode] = React.useState(null);
   const [processedNodes, setProcessedNodes] = React.useState([]);
@@ -1781,39 +1781,152 @@ export function TracingModal({
         animated: true,
       }));
 
-      if (cycles.length > 1) {
-        // remove edges from node to the same node
-        let newEdges = updatedEdges.filter((edge) => edge.source !== edge.target);
+      // Helper function to get node position
+      const getNodePosition = (nodeId) => {
+        const node = processedNodes.find(n => n.id === nodeId);
+        return node?.position || { x: 0, y: 0 };
+      };
+
+      // Helper function to filter and process edges
+      const processEdges = (edges) => {
+        // Remove self-loops
+        let filteredEdges = edges.filter((edge) => edge.source !== edge.target);
         
-        // filter edges where A->B and B->A exists, only keep A->B, keep the one with top position
-        newEdges = newEdges.filter((edge) => {
-          const reverseEdge = newEdges.find((e) => e.source === edge.target && e.target === edge.source);
-          if (reverseEdge) {
-            return edge.position.y < reverseEdge.position.y;
+        // Group edges by their endpoints to find bidirectional pairs
+        const edgeMap = new Map();
+        filteredEdges.forEach(edge => {
+          const sourcePos = getNodePosition(edge.source);
+          const targetPos = getNodePosition(edge.target);
+          
+          // Create a key for the edge pair (sorted to handle both directions)
+          const key = [edge.source, edge.target].sort().join('-');
+          
+          if (!edgeMap.has(key)) {
+            edgeMap.set(key, []);
           }
-          return true;
-        });
-        let newPhantomEdges = phantomEdges.filter((edge) => edge.source !== edge.target);
-        newPhantomEdges = newPhantomEdges.filter((edge) => {
-          const reverseEdge = newEdges.find((e) => e.source === edge.target && e.target === edge.source);
-          if (reverseEdge) {
-            return edge.position.y < reverseEdge.position.y;
-          }
-          return true;
+          
+          edgeMap.get(key).push({
+            ...edge,
+            sourcePos,
+            targetPos,
+            isUpward: sourcePos.y > targetPos.y // source is below target
+          });
         });
 
-        setProcessedEdges([...newEdges, ...newPhantomEdges]);
+        // Process each edge group
+        const finalEdges = [];
+        
+        edgeMap.forEach((edgeGroup, key) => {
+          if (edgeGroup.length === 1) {
+            const edge = edgeGroup[0];
+            const sourcePos = edge.sourcePos;
+            const targetPos = edge.targetPos;
+            
+            // Calculate if nodes are at same level (horizontal connection)
+            const isHorizontal = Math.abs(sourcePos.y - targetPos.y) < 50; // 50px tolerance for "same level"
+            const isLeftToRight = sourcePos.x < targetPos.x;
+            
+            if (isHorizontal) {
+              // Horizontal connection - use left/right handles with straight lines
+              finalEdges.push({
+                ...edge,
+                sourceHandle: isLeftToRight ? 'right' : 'left',
+                targetHandle: isLeftToRight ? 'left' : 'right',
+                type: 'straight'
+              });
+            } else if (!edge.isUpward) {
+              // Regular top-to-bottom edge
+              finalEdges.push(edge);
+            } else {
+              // Bottom-to-top edge - modify connection points
+              finalEdges.push({
+                ...edge,
+                sourceHandle: 'top',    // Start from top of source node
+                targetHandle: 'bottom', // End at bottom of target node
+                type: 'smart'
+              });
+            }
+          } else if (edgeGroup.length === 2) {
+            // Bidirectional edges - determine if horizontal or vertical
+            const edge1 = edgeGroup[0];
+            const edge2 = edgeGroup[1];
+            const sourcePos = edge1.sourcePos;
+            const targetPos = edge1.targetPos;
+            
+            const isHorizontal = Math.abs(sourcePos.y - targetPos.y) < 50;
+            const isLeftToRight = sourcePos.x < targetPos.x;
+            
+            if (isHorizontal) {
+              // Horizontal bidirectional connection with straight lines
+              const leftToRight = edgeGroup.find(e => e.sourcePos.x < e.targetPos.x);
+              if (leftToRight) {
+                finalEdges.push({
+                  ...leftToRight,
+                  sourceHandle: 'right',
+                  targetHandle: 'left',
+                  markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                    color: leftToRight.style?.stroke || '#1976d2',
+                    width: 10,
+                    height: 10,
+                  },
+                  markerStart: {
+                    type: MarkerType.ArrowClosed,
+                    color: leftToRight.style?.stroke || '#1976d2',
+                    width: 10,
+                    height: 10,
+                  },
+                  type: 'straight'
+                });
+              }
+            } else {
+              // Vertical bidirectional connection
+              const topToBottom = edgeGroup.find(e => !e.isUpward);
+              const bottomToTop = edgeGroup.find(e => e.isUpward);
+              
+              if (topToBottom && bottomToTop) {
+                // Show the top-to-bottom edge with bidirectional arrows
+                finalEdges.push({
+                  ...topToBottom,
+                  markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                    color: topToBottom.style?.stroke || '#1976d2',
+                    width: 10,
+                    height: 10,
+                  },
+                  markerStart: {
+                    type: MarkerType.ArrowClosed,
+                    color: topToBottom.style?.stroke || '#1976d2',
+                    width: 10,
+                    height: 10,
+                  }
+                });
+              } else if (topToBottom) {
+                // Only top-to-bottom exists
+                finalEdges.push(topToBottom);
+              } else if (bottomToTop) {
+                // Only bottom-to-top exists - modify connection points
+                finalEdges.push({
+                  ...bottomToTop,
+                  sourceHandle: 'top',    // Start from top of source node
+                  targetHandle: 'bottom', // End at bottom of target node
+                  type: 'smart'
+                });
+              }
+            }
+          }
+        });
+
+        return finalEdges;
+      };
+
+      if (cycles.length > 1) {
+        const processedRegularEdges = processEdges(updatedEdges);
+        const processedPhantomEdges = processEdges(phantomEdges);
+        setProcessedEdges([...processedRegularEdges, ...processedPhantomEdges]);
       } else {
-        let newEdges = updatedEdges.filter((edge) => edge.source !== edge.target);
-        newEdges = newEdges.filter((edge) => {
-          const reverseEdge = newEdges.find((e) => e.source === edge.target && e.target === edge.source);
-          if (reverseEdge) {
-            return edge.position.y < reverseEdge.position.y;
-          }
-          return true;
-        });
-
-        setProcessedEdges([...newEdges]);
+        const processedRegularEdges = processEdges(updatedEdges);
+        setProcessedEdges([...processedRegularEdges]);
       }
   }, [regularEdges, highlightedPath]);
   console.log('open', open);

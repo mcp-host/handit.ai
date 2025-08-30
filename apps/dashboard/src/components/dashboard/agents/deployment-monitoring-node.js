@@ -384,6 +384,144 @@ export const DeploymentMonitoringNode = React.memo(({ id, data, isConnectable })
             }}
           />
         ))}
+      
+      {/* Default handles for edge connection points */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="top"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: 'transparent',
+          border: '1px solid transparent',
+          top: '8px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
+      
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        id="bottom"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: 'transparent',
+          border: '1px solid transparent',
+          bottom: '8px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
+      
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="left"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: 'transparent',
+          border: '1px solid transparent',
+          left: '8px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
+      
+      <Handle
+        type="target"
+        position={Position.Right}
+        id="right"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: 'transparent',
+          border: '1px solid transparent',
+          right: '8px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
+      
+      {/* Default source handles for edge connection points */}
+      <Handle
+        type="source"
+        position={Position.Top}
+        id="top"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: 'transparent',
+          border: '1px solid transparent',
+          top: '8px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
+      
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: 'transparent',
+          border: '1px solid transparent',
+          bottom: '8px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
+      
+      <Handle
+        type="source"
+        position={Position.Left}
+        id="left"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: 'transparent',
+          border: '1px solid transparent',
+          left: '8px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
+      
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: 'transparent',
+          border: '1px solid transparent',
+          right: '8px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
     </Box>
   );
 });

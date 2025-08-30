@@ -373,6 +373,75 @@ export const MonitoringNode = React.memo(({ id, data, isConnectable }) => {
 
       {/* Input Handles */}
       {renderHandles(data.inputs, 'target', Position.Top)}
+      
+      {/* Default handles for edge connection points */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="top"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: data.color || nodeColors[data.type],
+          border: '1px solid #fff',
+          top: '8px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
+      
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        id="bottom"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: data.color || nodeColors[data.type],
+          border: '1px solid #fff',
+          bottom: '8px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
+      
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="left"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: data.color || nodeColors[data.type],
+          border: '1px solid #fff',
+          left: '8px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
+      
+      <Handle
+        type="target"
+        position={Position.Right}
+        id="right"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: data.color || nodeColors[data.type],
+          border: '1px solid #fff',
+          right: '8px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
 
       {/* Node Content */}
       <Box sx={{ mt: 1 }}>
@@ -446,6 +515,75 @@ export const MonitoringNode = React.memo(({ id, data, isConnectable }) => {
 
       {/* Output Handles */}
       {renderHandles(data.outputs, 'source', Position.Bottom)}
+      
+      {/* Default source handles for edge connection points */}
+      <Handle
+        type="source"
+        position={Position.Top}
+        id="top"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: data.color || nodeColors[data.type],
+          border: '1px solid #fff',
+          top: '8px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
+      
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: data.color || nodeColors[data.type],
+          border: '1px solid #fff',
+          bottom: '8px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
+      
+      <Handle
+        type="source"
+        position={Position.Left}
+        id="left"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: data.color || nodeColors[data.type],
+          border: '1px solid #fff',
+          left: '8px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
+      
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: data.color || nodeColors[data.type],
+          border: '1px solid #fff',
+          right: '8px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
     </Card>
   );
 });
