@@ -23,6 +23,7 @@ export const createAgentNode = async ({
   nodeName,
   toolType = 'HTTP',
   description = '',
+  group = null,
 }) => {
   if (nodeType === 'model') {
     const modelGroup = await ModelGroup.create({
@@ -54,6 +55,7 @@ export const createAgentNode = async ({
       },
       modelId: model.id,
       slug: nodeId,
+      group: group,
     });
   } else {
     return await AgentNode.create({
@@ -219,6 +221,7 @@ export const findOrCreateAgentNode = async ({
   toolType = 'HTTP',
   description = '',
   agentLogId = null,
+  group = null,
 }) => {
   // Try to find existing node
   const agentLog = await AgentLog.findOne({
@@ -247,6 +250,7 @@ export const findOrCreateAgentNode = async ({
       nodeName,
       toolType,
       description,
+      group,
     });
 
     // Reposition all nodes
