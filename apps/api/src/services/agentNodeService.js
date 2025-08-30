@@ -191,7 +191,7 @@ export const repositionAgentNodes = async (agent, group = false) => {
     })),
   };
 
-  const repositionedConfig = repositionGraphNodes(agentConfig, group);
+  const repositionedConfig = await repositionGraphNodes(agentConfig, group);
   const nodesPlain = await AgentNode.findAll({
     where: { agentId: agent.id },
   });
