@@ -157,6 +157,7 @@ export const bulkTrack = async (req, res) => {
           });
         }
       } catch (err) {
+        console.log('err:', err.message);
         results.push({ node: item.id, error: err.message });
       }
     }
