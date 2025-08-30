@@ -150,7 +150,7 @@ export const connectNodes = async ({
 /**
  * Updates the positions of all nodes in an agent using the repositionGraphNodes function
  */
-export const repositionAgentNodes = async (agent) => {
+export const repositionAgentNodes = async (agent, group = false) => {
   const nodes = await AgentNode.findAll({
     where: { agentId: agent.id },
     include: [
@@ -178,8 +178,8 @@ export const repositionAgentNodes = async (agent) => {
     nodes: nodes.map((node) => ({
       name: node.name,
       slug: node.slug,
+      group: group ? node.group : null,
       type: node.type,
-      group: node.group,
       description: node.config?.description || '',
       position: node.config?.position || { x: 0, y: 0 },
       next_nodes: node.outgoingConnections.map((conn) => ({
@@ -240,6 +240,7 @@ export const findOrCreateAgentNode = async ({
       agentId: agent.id,
     },
   });
+  let newNode = false;
 
   if (!agentNode) {
     // Create new node
@@ -253,6 +254,7 @@ export const findOrCreateAgentNode = async ({
       group,
     });
 
+    newNode = true;
     // Reposition all nodes
   }
 
@@ -268,5 +270,5 @@ export const findOrCreateAgentNode = async ({
 
   await repositionAgentNodes(agent);
 
-  return agentNode;
+  return { agentNode, newNode };
 };

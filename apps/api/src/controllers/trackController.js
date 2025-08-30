@@ -3,7 +3,7 @@ import { executeTrack, executeToolTrack } from '../services/trackService.js';
 import { Op } from 'sequelize';
 import { createAgentFromConfig } from '../services/agentCreationService.js';
 import { generateSlug } from '../utils/slugGenerator.js';
-import { findOrCreateAgentNode } from '../services/agentNodeService.js';
+import { findOrCreateAgentNode, repositionAgentNodes } from '../services/agentNodeService.js';
 
 const {
   Model,
@@ -89,10 +89,11 @@ export const bulkTrack = async (req, res) => {
             } 
           } 
         });
+        let newNodeCreated = false;
 
         // For each agent, find or create the node
         for (const agent of agents) {
-          const agentNode = await findOrCreateAgentNode({
+          const {agentNode, newNode} = await findOrCreateAgentNode({
             agent,
             nodeType: item.nodeType || 'model',
             model,
@@ -103,6 +104,12 @@ export const bulkTrack = async (req, res) => {
             agentLogId: executionId,
             group: item.group || null
           });
+
+          // check if agent node was just created
+          if (newNode) {
+            newNodeCreated = true;
+          }
+
 
           if (agentNode.type === 'model') {
             model = await Model.findOne({
@@ -137,6 +144,10 @@ export const bulkTrack = async (req, res) => {
           } else {
             results.push({ node: nodeName, success: true, modelLogId: answer.modelLogId || null });
           }
+        }
+
+        if (newNodeCreated) {
+          await repositionAgentNodes(agent, true);
         }
       } catch (err) {
         results.push({ node: item.id, error: err.message });
@@ -276,9 +287,9 @@ export const track = async (req, res) => {
       model = await Model.findOne({ where: { slug: req.body.modelId } });
     }
     
-
+    let newNodeCreated = false;
     // Find or create the node
-    const agentNode = await findOrCreateAgentNode({
+    const {agentNode, newNode} = await findOrCreateAgentNode({
       agent,
       nodeType,
       model,
@@ -294,6 +305,10 @@ export const track = async (req, res) => {
           id: agentNode.modelId,
         }
       });
+    }
+
+    if (newNode) {
+      newNodeCreated = true;
     }
 
     // Add environment to request body
