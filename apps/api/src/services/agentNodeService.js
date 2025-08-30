@@ -151,6 +151,7 @@ export const connectNodes = async ({
  * Updates the positions of all nodes in an agent using the repositionGraphNodes function
  */
 export const repositionAgentNodes = async (agent, group = false) => {
+  console.log('repositionAgentNodes', agent.id, group);
   const nodes = await AgentNode.findAll({
     where: { agentId: agent.id },
     include: [
@@ -190,7 +191,7 @@ export const repositionAgentNodes = async (agent, group = false) => {
     })),
   };
 
-  const repositionedConfig = repositionGraphNodes(agentConfig);
+  const repositionedConfig = repositionGraphNodes(agentConfig, group);
   const nodesPlain = await AgentNode.findAll({
     where: { agentId: agent.id },
   });

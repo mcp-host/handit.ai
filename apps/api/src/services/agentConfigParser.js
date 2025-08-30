@@ -108,11 +108,11 @@ export const parseAgentConfig = async (rawConfig) => {
 };
 
 
-export const repositionGraphNodes = async (graph) => {
+export const repositionGraphNodes = async (graph, group = false) => {
   // Check if any nodes have groups
   const hasGroups = graph.nodes.some(node => node.group && node.group.trim() !== '');
-  
-  if (!hasGroups) {
+  console.log('hasGroups', hasGroups, group);
+  if (!hasGroups || !group) {
     // Use original logic if no groups are present
     return repositionGraphNodesOriginal(graph);
   }
@@ -321,6 +321,7 @@ Always return valid JSON with exact positioning coordinates.`
         node.position = aiPosition;
       }
     });
+    console.log('graph', graph);
 
     // Validate and fix any spacing issues
     validateAndFixSpacing(graph);
