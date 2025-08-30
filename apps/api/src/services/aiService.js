@@ -392,8 +392,6 @@ export const generateAIResponse = async ({
         break;
         
       case 'AWSBedrock':
-        console.log('tokenData', tokenData);
-        console.log('token', token);
         if (!tokenData && !token) {
           throw new Error('AWS Bedrock requires tokenData with AWS credentials or token');
         }

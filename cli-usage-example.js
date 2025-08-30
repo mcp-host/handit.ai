@@ -12,7 +12,6 @@ async function loginCommand() {
   const client = new CLIAuthClient();
   
   try {
-    console.log('🔐 Starting CLI authentication...\n');
     
     // For this example, we'll use a simple approach
     // In a real CLI, you might prompt for email/password or use environment variables
@@ -20,17 +19,11 @@ async function loginCommand() {
     const companyId = process.env.HANDIT_COMPANY_ID;
     
     if (!userId || !companyId) {
-      console.log('❌ Please set HANDIT_USER_ID and HANDIT_COMPANY_ID environment variables');
-      console.log('   Or use the dashboard to generate a code manually');
       process.exit(1);
     }
     
     // Complete authentication flow
     const result = await client.authenticate(userId, companyId);
-    
-    console.log('✅ Authentication successful!');
-    console.log(`👤 User: ${result.user.firstName} ${result.user.lastName}`);
-    console.log(`🏢 Company: ${result.company.name}`);
     
     return result;
   } catch (error) {

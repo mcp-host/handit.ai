@@ -125,7 +125,6 @@ class CLIAuthClient {
       const result = await this.checkStatus(code);
       
       if (result.status === 'success') {
-        console.log('✅ Authentication successful!');
         return result;
       }
       
@@ -142,13 +141,7 @@ class CLIAuthClient {
   async authenticate(userId, companyId) {
     try {
       // Generate authentication code
-      console.log('🔑 Generating authentication code...');
       const { code, expiresAt } = await this.generateCode(userId, companyId);
-      
-      console.log(`\n📋 Your authentication code: ${code}`);
-      console.log(`⏰ This code expires at: ${new Date(expiresAt).toLocaleString()}`);
-      console.log('\n🌐 Please visit: https://dashboard.handit.ai/cli-auth');
-      console.log('   Sign in with your email and password to complete authentication.\n');
       
       // Complete authentication immediately
       const result = await this.completeAuthentication(code);
@@ -165,8 +158,6 @@ class CLIAuthClient {
       
       this.saveConfig(config);
       
-      console.log(`✅ Successfully authenticated as ${result.user.firstName} ${result.user.lastName}`);
-      console.log(`🏢 Company: ${result.company.name}`);
       
       return config;
     } catch (error) {

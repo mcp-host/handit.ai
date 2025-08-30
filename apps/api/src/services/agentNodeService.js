@@ -179,6 +179,7 @@ export const repositionAgentNodes = async (agent) => {
       name: node.name,
       slug: node.slug,
       type: node.type,
+      group: node.group,
       description: node.config?.description || '',
       position: node.config?.position || { x: 0, y: 0 },
       next_nodes: node.outgoingConnections.map((conn) => ({
@@ -201,7 +202,6 @@ export const repositionAgentNodes = async (agent) => {
         ...node.config,
         position: nodeConfig.position,
       };
-      console.log('node', node);
       await node.save();
     } else {
       console.log('node not found', node.slug);
