@@ -303,6 +303,15 @@ Always return valid JSON with exact positioning coordinates.`
           content: prompt
         }
       ],
+      responseFormat: z.object({
+        positions: z.array(z.object({
+          slug: z.string(),
+          x: z.number(),
+          y: z.number(),
+          reasoning: z.string()
+        })),
+        layout_strategy: z.string()
+      }),
       temperature: 0.3
     });
 
