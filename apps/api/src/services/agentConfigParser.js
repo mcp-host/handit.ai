@@ -252,13 +252,14 @@ const repositionGraphNodesWithGroups = async (graph) => {
       description: node.description
     }));
 
-    const prompt = `You are an expert at creating intelligent node layouts for agent workflow graphs. Given the following nodes with groups and connections, determine optimal positions that:
+    const prompt = `You are an expert at creating intelligent HORIZONTAL node layouts for agent workflow graphs. Given the following nodes with groups and connections, determine optimal positions that:
 
-1. MAINTAIN MINIMUM SPACING: Each node must be separated by at least 300 units horizontally and 300 units vertically from other nodes
-2. GROUP LOGIC: Nodes with the same group should be positioned near each other, forming logical clusters
-3. ORCHESTRATOR PATTERN: If there's an "orchestrator" group or central coordinating node, place it in a central position with other groups arranged around it
-4. FLOW DIRECTION: Respect the connection flow - connected nodes should have clear directional relationships
-5. AVOID OVERLAPS: No two nodes can occupy the same position or be closer than 300 units apart
+1. HORIZONTAL GROUP ARRANGEMENT: Arrange groups side-by-side horizontally, NOT vertically stacked
+2. COMPACT SPACING: Use 250-300px spacing between nodes (not ultra-separated, but clear)  
+3. GROUP CLUSTERING: Nodes with the same group should form horizontal clusters
+4. ORCHESTRATOR PATTERN: If there's an "orchestrator" group or central coordinating node, place it in the center with other groups arranged horizontally around it
+5. FLOW DIRECTION: Create logical left-to-right or center-outward flow patterns
+6. FLAT LAYOUT: Prefer wide, relatively flat layouts over tall vertical arrangements
 
 Node Data:
 ${JSON.stringify(nodeData, null, 2)}
@@ -276,27 +277,38 @@ Return ONLY a JSON object with this exact structure:
   "layout_strategy": "brief description of the overall layout approach used"
 }
 
-Consider these placement strategies:
-- Central hub: Place orchestrator/coordinator nodes in center, others radiating outward
-- Grouped clusters: Group similar nodes together in distinct areas  
-- Flow-based: Arrange nodes to follow the connection flow direction
-- Balanced: Distribute groups evenly across the available space
+PREFERRED LAYOUT STRATEGIES:
+- **Horizontal Hub**: Place orchestrator in center, groups arranged horizontally on left/right
+- **Linear Groups**: Arrange all groups in a horizontal line with logical spacing
+- **Center-Outward**: Central nodes with groups radiating horizontally outward
+- **Flow-based Horizontal**: Left-to-right flow with groups arranged horizontally
 
-CRITICAL: Ensure ALL positions maintain minimum 300px spacing and avoid overlaps!`;
+AVOID:
+- Vertical stacking of groups
+- Ultra-wide separation (>400px between nodes)
+- Cramped clustering (<200px between nodes)
+
+CRITICAL: Create wide, flat layouts with horizontal group arrangements!`;
 
     const completion = await generateAIResponse({
       messages: [
         {
           role: "system",
-          content: `You are an expert at intelligent graph layout algorithms. You understand group-based positioning, flow direction, and spatial optimization. Always ensure proper spacing (minimum 300px between nodes) and logical grouping. Focus on creating layouts that are both functionally logical and visually clear.
+          content: `You are an expert at intelligent HORIZONTAL graph layout algorithms. You specialize in creating wide, flat layouts with horizontal group arrangements. Focus on:
 
-When positioning nodes:
-- Orchestrator/coordinator nodes should be centrally positioned
-- Related group nodes should cluster together but maintain spacing
-- Connection flow should influence vertical/horizontal relationships
-- The layout should be balanced and avoid cramped areas
+HORIZONTAL LAYOUT PRINCIPLES:
+- Groups should be arranged side-by-side (horizontal clusters), NOT vertically stacked
+- Use 250-300px spacing between nodes (compact but clear, not ultra-separated)
+- Create wide, relatively flat layouts rather than tall vertical arrangements
+- Position orchestrators centrally with groups arranged horizontally around them
+- Establish logical left-to-right or center-outward flow patterns
 
-Always return valid JSON with exact positioning coordinates.`
+SPACING GUIDELINES:
+- Minimum 250px between nodes
+- Maximum 350px between nodes (avoid ultra-separation)
+- Groups should form distinct horizontal clusters
+
+Always return valid JSON with exact positioning coordinates optimized for horizontal viewing.`
         },
         {
           role: "user",
@@ -345,12 +357,13 @@ Always return valid JSON with exact positioning coordinates.`
   }
 };
 
-// Validate spacing and fix overlaps
+// Validate spacing and fix overlaps with horizontal layout preference
 const validateAndFixSpacing = (graph) => {
-  const minSpacing = 300;
+  const minSpacing = 250;
+  const maxSpacing = 350;
   const nodes = graph.nodes;
   
-  // Check for overlaps and resolve them
+  // Check for overlaps and resolve them with horizontal preference
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
       const node1 = nodes[i];
@@ -360,14 +373,22 @@ const validateAndFixSpacing = (graph) => {
       const dy = Math.abs(node1.position.y - node2.position.y);
       
       if (dx < minSpacing && dy < minSpacing) {
-        // Nodes are too close, move node2
-        if (dx < dy) {
-          // Move horizontally
-          node2.position.x = node1.position.x + (node2.position.x > node1.position.x ? minSpacing : -minSpacing);
-        } else {
-          // Move vertically  
-          node2.position.y = node1.position.y + (node2.position.y > node1.position.y ? minSpacing : -minSpacing);
+        // Nodes are too close, prefer horizontal separation for flat layout
+        node2.position.x = node1.position.x + (node2.position.x > node1.position.x ? minSpacing : -minSpacing);
+        
+        // Only adjust vertically if nodes are in different groups or if horizontal adjustment isn't enough
+        if (node1.group !== node2.group && dy < minSpacing / 2) {
+          node2.position.y = node1.position.y + (node2.position.y > node1.position.y ? minSpacing / 2 : -minSpacing / 2);
         }
+      }
+      
+      // Prevent ultra-wide separation while maintaining group clustering
+      if (dx > maxSpacing && node1.group === node2.group) {
+        // Bring nodes in the same group closer together
+        const midX = (node1.position.x + node2.position.x) / 2;
+        const adjustment = (maxSpacing * 0.8) / 2; // 80% of max spacing
+        node1.position.x = midX - adjustment;
+        node2.position.x = midX + adjustment;
       }
     }
   }
