@@ -243,7 +243,7 @@ export const TracingToolNode = React.memo(({ id, data, isConnectable }) => {
         boxShadow: isHovered || data.isSelected ? 6 : 2,
         position: 'relative',
         fontFamily: 'inherit',
-        overflow: 'hidden',
+        overflow: 'visible',
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
