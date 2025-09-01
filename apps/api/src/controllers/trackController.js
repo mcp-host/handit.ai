@@ -161,9 +161,7 @@ export const bulkTrack = async (req, res) => {
         results.push({ node: item.id, error: err.message });
       }
     }
-    if (newNodeCreated) {
-      await repositionAgentNodes(agent, true);
-    }
+    await repositionAgentNodes(agent, true);
     const agentLog = await AgentLog.findByPk(executionId);
     if (agentLog) {
       await agentLog.update({
