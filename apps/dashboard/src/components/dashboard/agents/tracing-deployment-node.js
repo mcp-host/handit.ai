@@ -313,7 +313,7 @@ export const TracingDeploymentNode = React.memo(({ id, data, isConnectable }) =>
       >
         {/* Group Information */}
         {data.group && (
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 1.5, paddingLeft: 1.5, paddingRight: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 1.5, paddingLeft: 1.5, paddingRight: 1.5, overflow: 'hidden' }}>
             <Typography variant="body2" color="text.secondary">
               Group
             </Typography>
