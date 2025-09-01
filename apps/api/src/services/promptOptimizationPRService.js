@@ -224,8 +224,7 @@ export const createPromptOptimizationPR = async ({
       },
     });
     // Step 10: Create Pull Request
-    const accuracyImprovement = metrics.accuracy_improvement || metrics.improvement || 0;
-    const prTitle = `Prompt improved by Handit’s autonomous engine in the node ${agentNode.name} of ${agent.name}`;
+    const prTitle = `Prompt improved by Handit's autonomous engine in the node ${agentNode.name} of ${agent.name}`;
     const prBody = await generatePRDescription(agent, originalPrompt, optimizedPrompt, metrics, validPromptLocations, modelLog, models);
 
     console.log(`📋 Creating Pull Request: ${prTitle}`);
@@ -731,18 +730,22 @@ const generateCodeReplacements = async (validPromptLocations, originalPrompt, op
       const messages = [
         {
           role: 'system',
-          content: `You are an expert code editor. Your task is to replace an AI prompt in code with an optimized version while preserving all code structure, formatting, and functionality.
+          content: `You are an expert code editor. Your task is to replace ONLY the AI prompt text in code with an optimized version while preserving ALL code structure, formatting, and functionality.
 
-Rules:
-1. Only replace the specific prompt text, not variable names, function calls, or code structure
-2. Maintain exact indentation and formatting
-3. Preserve string delimiters (quotes, backticks, etc.)
-4. Keep all surrounding code exactly as is
-5. If the prompt spans multiple lines, maintain the line structure
-6. Ensure the replacement fits naturally in the existing code context
-7. Only replace the the content that it the prompt, not any other prompt, only the originalPrompt replace it, not any other prompt.
+CRITICAL RULES:
+1. ONLY replace the exact originalPrompt text - DO NOT modify any other code
+2. DO NOT change variable names, function names, imports, or any code structure
+3. DO NOT modify comments, documentation, or other prompts
+4. Maintain exact indentation, spacing, and formatting
+5. Preserve string delimiters (quotes, backticks, etc.) exactly as they are
+6. Convert any \\n in the optimized prompt to actual line breaks
+7. If the original prompt has line breaks, preserve the exact line structure
+8. Ensure the replacement fits naturally without changing surrounding code
+9. The output should be IDENTICAL to the input except for the prompt text replacement
 
-Provide the complete new file content with only the prompt text replaced.`
+IMPORTANT: If you see \\n in the optimized prompt, convert it to actual line breaks. Do not leave literal \\n characters in the code.
+
+Provide the complete new file content with ONLY the prompt text replaced and nothing else changed.`
         },
         {
           role: 'user',
@@ -752,7 +755,7 @@ Original Prompt to Replace:
 "${originalPrompt}"
 
 New Optimized Prompt:
-"${optimizedPrompt}"
+"${optimizedPrompt.replace(/\\n/g, '\n')}"
 
 Current File Content:
 \`\`\`
@@ -766,7 +769,7 @@ Please provide the updated file content with the prompt replaced. Also explain w
       const response = await generateAIResponse({
         messages,
         responseFormat: CodeReplacementSchema,
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         provider: 'OpenAI',
         token
       });
@@ -786,8 +789,8 @@ Please provide the updated file content with the prompt replaced. Also explain w
 
     } catch (error) {
       console.error(`Error generating replacement for ${location.filePath}:`, error);
-      // Fallback: simple string replacement
-      const newContent = location.content.replace(originalPrompt, optimizedPrompt);
+      // Fallback: improved string replacement with proper line break handling
+      const newContent = location.content.replace(originalPrompt, optimizedPrompt.replace(/\\n/g, '\n'));
       replacements.push({
         filePath: location.filePath,
         originalContent: location.content,
@@ -894,124 +897,7 @@ Prompt version bumped from \`${metrics.version_before || 'v1.0.0'}\` to \`${metr
   return title + '\n\n' + body;
 };
 
-/**
- * Generates a metrics comparison table for the PR description
- * 
- * @param {Object} metrics - Performance metrics object
- * @returns {string} Formatted metrics table
- */
-const generateMetricsTable = (metrics) => {
-  const rows = [];
-  
-  // Helper function to format metric names for display
-  const formatMetricName = (metricName) => {
-    return metricName
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
 
-  // Helper function to determine if metric is error-type (lower is better)
-  const isErrorMetric = (metricName) => {
-    return metricName.toLowerCase().includes('error') || 
-           metricName.toLowerCase().includes('latency') ||
-           metricName.toLowerCase().includes('hallucination');
-  };
-
-  // Helper function to determine format based on metric values
-  const determineFormat = (beforeValue, afterValue) => {
-    // If values are between 0 and 1, treat as percentage
-    if ((beforeValue >= 0 && beforeValue <= 1) && (afterValue >= 0 && afterValue <= 1)) {
-      return 'percentage';
-    }
-    // Otherwise treat as decimal
-    return 'decimal';
-  };
-
-  // Find all metrics with before/after pattern
-  const metricPairs = {};
-  
-  // Scan all metrics for before/after pairs
-  Object.keys(metrics).forEach(key => {
-    if (key.endsWith('_before')) {
-      const metricName = key.replace('_before', '');
-      const afterKey = `${metricName}_after`;
-      
-      if (metrics[afterKey] !== undefined) {
-        metricPairs[metricName] = {
-          beforeValue: metrics[key],
-          afterValue: metrics[afterKey],
-          beforeKey: key,
-          afterKey: afterKey
-        };
-      }
-    }
-  });
-
-  // Define display order (standard metrics first, then custom metrics)
-  const standardMetrics = ['accuracy', 'f1_score', 'precision', 'recall', 'error_rate'];
-  const customMetrics = Object.keys(metricPairs).filter(name => !standardMetrics.includes(name));
-  const orderedMetrics = [...standardMetrics.filter(name => metricPairs[name]), ...customMetrics];
-
-  // Generate rows for all metrics
-  for (const metricName of orderedMetrics) {
-    const pair = metricPairs[metricName];
-    const beforeValue = pair.beforeValue;
-    const afterValue = pair.afterValue;
-    
-    if (beforeValue !== undefined && afterValue !== undefined && 
-        beforeValue !== null && afterValue !== null) {
-      
-      // Ensure values are numbers
-      const beforeNum = Number(beforeValue);
-      const afterNum = Number(afterValue);
-      
-      // Skip if values are not valid numbers
-      if (isNaN(beforeNum) || isNaN(afterNum)) {
-        continue;
-      }
-      
-      const format = determineFormat(beforeNum, afterNum);
-      const isError = isErrorMetric(metricName);
-      
-      const beforeFormatted = format === 'percentage' 
-        ? formatPercentage(beforeNum) 
-        : beforeNum.toFixed(2);
-        
-      const afterFormatted = format === 'percentage' 
-        ? formatPercentage(afterNum) 
-        : afterNum.toFixed(2);
-      
-      const change = afterNum - beforeNum;
-      const changeFormatted = format === 'percentage' 
-        ? formatPercentage(Math.abs(change)) 
-        : Math.abs(change).toFixed(2);
-      
-      const isImprovement = isError ? change < 0 : change > 0;
-      const changeIcon = isImprovement ? '🔼' : '🔽';
-      const changeSign = isError 
-        ? (change < 0 ? '-' : '+')
-        : (change > 0 ? '+' : '-');
-      
-      const displayName = formatMetricName(metricName);
-      rows.push(`| ${displayName} | ${beforeFormatted} | ${afterFormatted} | ${changeIcon} ${changeSign}${changeFormatted} |`);
-    }
-  }
-
-  if (rows.length === 0) {
-    // Fallback if no metrics pairs are available
-    const improvement = Number(metrics.improvement || metrics.accuracy_improvement || 0);
-    const accuracy = Number(metrics.accuracy_after || metrics.accuracy || 0.90);
-    const beforeAccuracy = accuracy - improvement;
-    
-    rows.push(`| Accuracy | ${formatPercentage(beforeAccuracy)} | ${formatPercentage(accuracy)} | 🔼 +${formatPercentage(improvement)} |`);
-  }
-
-  const header = `| Metric        | Before | After  | Δ Change |
-|---------------|--------|--------|----------|`;
-
-  return header + '\n' + rows.join('\n');
-};
 
 /**
  * Generates an optimized metrics table with only up arrows for improvements
@@ -1280,42 +1166,7 @@ handit.ai's Autonomous Engineer continuously monitors your AI systems, detects p
 🤖 **Automatically generated by [handit.ai Autonomous Engineer](https://handit.ai)** - Your AI system's performance optimization partner`;
 };
 
-/**
- * Generates a detailed metrics comment for the PR
- * 
- * @param {Object} metrics - Performance metrics object
- * @param {Array} locations - Array of prompt locations
- * @returns {string} Formatted metrics comment
- */
-const generateMetricsComment = (metrics, locations) => {
-  const metricsEntries = Object.entries(metrics)
-    .filter(([, value]) => typeof value === 'number')
-    .map(([key, value]) => `- **${key.charAt(0).toUpperCase() + key.slice(1)}**: ${formatMetricValue(key, value)}`)
-    .join('\n');
 
-  return `## 📈 Detailed Performance Metrics
-
-${metricsEntries}
-
-### 🎯 Optimization Details
-
-- **Prompt Locations Found**: ${locations.length}
-- **Search Strategies Used**: ${[...new Set(locations.map(l => l.strategy))].join(', ')}
-- **AI Analysis Confidence**: ${Math.round(locations.reduce((sum, l) => sum + (l.aiAnalysis?.confidence || 0), 0) / locations.length * 100)}%
-
-### 📋 Files Modified
-
-${locations.map(loc => `
-**${loc.filePath}**
-- Strategy: ${loc.strategy}
-- Confidence: ${Math.round((loc.aiAnalysis?.confidence || 0) * 100)}%
-- Analysis: ${loc.aiAnalysis?.reasoning || 'N/A'}
-`).join('\n')}
-
----
-
-*Metrics calculated from ${metrics.totalEvaluations || 'multiple'} evaluations using Handit's evaluation framework.*`;
-};
 
 /**
  * Formats a percentage value for display
