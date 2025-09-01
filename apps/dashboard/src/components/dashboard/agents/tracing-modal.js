@@ -1551,7 +1551,7 @@ export function TracingModal({
             type: node.data.type === 'model' ? 'deploymentCustom' : node.data.type === 'tool' ? 'toolCustom' : 'custom',
             position: {
               ...node.position,
-              x: node.position.x * 1.5 // Add 50% more horizontal spacing
+              x: node.position.x * 1.8 // Add 80% more horizontal spacing for wider nodes
             },
             data: {
               ...node.data,
@@ -1626,7 +1626,7 @@ export function TracingModal({
             type: node.data.type === 'model' ? 'deploymentCustom' : node.data.type === 'tool' ? 'toolCustom' : 'custom',
             position: {
               ...node.position,
-              x: node.position.x * 1.5 // Add 50% more horizontal spacing
+              x: node.position.x * 1.8 // Add 80% more horizontal spacing for wider nodes
             },
             data: {
               ...node.data,

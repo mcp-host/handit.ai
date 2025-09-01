@@ -8,7 +8,7 @@
 'use client';
 
 import * as React from 'react';
-import { Box, Typography, Divider, Card } from '@mui/material';
+import { Box, Button, Typography, Divider, Card } from '@mui/material';
 import { Handle, Position } from 'reactflow';
 import { Wrench } from '@phosphor-icons/react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -81,6 +81,154 @@ export const TracingToolNode = React.memo(({ id, data, isConnectable }) => {
     ));
   };
 
+  /**
+   * Step Badge Component
+   * Displays the current step number(s) in circular badge(s)
+   */
+  const StepBadge = ({ steps, selectedCycle, disableCycles, allSteps }) => {
+    if (disableCycles && allSteps?.length > 0) {
+      // Show all steps when cycles are disabled
+      const nodeSteps = allSteps.sort((a, b) => a - b);
+      
+      if (nodeSteps.length === 1) {
+        return (
+          <Button
+            sx={{
+              position: 'absolute',
+              top: '-15px',
+              right: '10px',
+              minWidth: '24px',
+              width: '24px',
+              height: '24px',
+              p: 0,
+              background: '#1976d2',
+              color: 'white',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '12px',
+              transition: 'all 0.2s ease',
+              transform: 'scale(1.1)',
+              boxShadow: '0 0 0 2px rgba(25, 118, 210, 0.3)',
+              '&:hover': {
+                background: '#1976d2',
+              },
+              zIndex: 10,
+            }}
+          >
+            {nodeSteps[0]}
+          </Button>
+        );
+      } else if (nodeSteps.length <= 3) {
+        // Show individual badges for 2-3 steps
+        return (
+          <>
+            {nodeSteps.map((step, index) => (
+              <Button
+                key={step}
+                sx={{
+                  position: 'absolute',
+                  top: '-15px',
+                  right: `${10 + (index * 28)}px`,
+                  minWidth: '24px',
+                  width: '24px',
+                  height: '24px',
+                  p: 0,
+                  background: '#1976d2',
+                  color: 'white',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '12px',
+                  transition: 'all 0.2s ease',
+                  transform: 'scale(1.1)',
+                  boxShadow: '0 0 0 2px rgba(25, 118, 210, 0.3)',
+                  '&:hover': {
+                    background: '#1976d2',
+                  },
+                  zIndex: nodeSteps.length - index + 10,
+                }}
+              >
+                {step}
+              </Button>
+            ))}
+          </>
+        );
+      } else {
+        // Show compact format for many steps: "1,2,3..."
+        const displayText = nodeSteps.length > 4 
+          ? `${nodeSteps.slice(0, 2).join(',')}...` 
+          : nodeSteps.join(',');
+        
+        return (
+          <Button
+            sx={{
+              position: 'absolute',
+              top: '-15px',
+              right: '10px',
+              minWidth: '40px',
+              height: '24px',
+              p: 0,
+              background: '#1976d2',
+              color: 'white',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '10px',
+              transition: 'all 0.2s ease',
+              transform: 'scale(1.1)',
+              boxShadow: '0 0 0 2px rgba(25, 118, 210, 0.3)',
+              '&:hover': {
+                background: '#1976d2',
+              },
+              zIndex: 10,
+            }}
+          >
+            {displayText}
+          </Button>
+        );
+      }
+    } else {
+      // Original logic for cycles enabled
+      const index = selectedCycle?.steps?.findIndex(step => steps.includes(step));
+      const title = selectedCycle?.steps?.[index];
+
+      if (!title) return null;
+      return (
+        <Button
+          sx={{
+            position: 'absolute',
+            top: '-15px',
+            right: '10px',
+            minWidth: '24px',
+            width: '24px',
+            height: '24px',
+            p: 0,
+            background: '#1976d2',
+            color: 'white',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '12px',
+            transition: 'all 0.2s ease',
+            transform: 'scale(1.1)',
+            boxShadow: '0 0 0 2px rgba(25, 118, 210, 0.3)',
+            '&:hover': {
+              background: '#1976d2',
+            },
+            zIndex: 10,
+          }}
+        >
+          {title}
+        </Button>
+      );
+    }
+  };
+
   return (
     <Card
       sx={{
@@ -100,6 +248,14 @@ export const TracingToolNode = React.memo(({ id, data, isConnectable }) => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Step Badge */}
+      <StepBadge
+        steps={data.sequence}
+        selectedCycle={data.selectedCycle}
+        disableCycles={data.disableCycles}
+        allSteps={data.allSteps}
+      />
+
       {/* Input Handles */}
       {renderHandles(data.inputs, 'target', Position.Top)}
       
