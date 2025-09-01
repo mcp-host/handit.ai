@@ -307,8 +307,8 @@ export const TracingDeploymentNode = React.memo(({ id, data, isConnectable }) =>
   return (
     <Card
       sx={{
-        minWidth: 350,
-        maxWidth: 350,
+        minWidth: 400,
+        maxWidth: 400,
         border: '2px solid',
         borderColor: isHovered || data.isSelected ? 'primary.main' : 'var(--mui-palette-divider, #222)',
         background: 'var(--mui-palette-background-default, #101214)',
@@ -423,7 +423,7 @@ export const TracingDeploymentNode = React.memo(({ id, data, isConnectable }) =>
           variant="subtitle1"
           fontWeight={700}
           sx={{
-            fontSize: '1.08rem',
+            fontSize: '1.2rem',
             color: 'inherit',
             flex: 1,
             whiteSpace: 'nowrap',
@@ -478,7 +478,7 @@ export const TracingDeploymentNode = React.memo(({ id, data, isConnectable }) =>
               variant="body2"
               fontWeight={600}
               color="inherit"
-              sx={{ fontFamily: 'monospace', fontSize: '1em' }}
+              sx={{ fontFamily: 'monospace', fontSize: '1.1em' }}
             >
               {data.group}
             </Typography>
@@ -504,7 +504,7 @@ export const TracingDeploymentNode = React.memo(({ id, data, isConnectable }) =>
                 variant="body2"
                 fontWeight={600}
                 color="inherit"
-                sx={{ fontFamily: 'monospace', fontSize: '1em' }}
+                sx={{ fontFamily: 'monospace', fontSize: '1.1em' }}
               >
                 {data.status === 'error' ? 'Error' : 'OK'}
               </Typography>

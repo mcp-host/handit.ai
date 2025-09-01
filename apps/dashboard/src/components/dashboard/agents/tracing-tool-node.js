@@ -232,8 +232,8 @@ export const TracingToolNode = React.memo(({ id, data, isConnectable }) => {
   return (
     <Card
       sx={{
-        minWidth: 240,
-        maxWidth: 260,
+        minWidth: 280,
+        maxWidth: 300,
         border: '1.5px solid',
         borderColor: isHovered || data.isSelected ? 'primary.main' : 'var(--mui-palette-divider, #222)',
         background: 'var(--mui-palette-background-default, #101214)',
@@ -341,7 +341,7 @@ export const TracingToolNode = React.memo(({ id, data, isConnectable }) => {
         {/* Node Header */}
         <Box sx={{ display: 'flex', alignItems: 'center', px: 2, pt: 1.5, pb: 1, background: 'transparent' }}>
           <ProviderIcon />
-          <Typography variant="subtitle1" fontWeight={600} sx={{ fontSize: '1.08rem', color: 'inherit', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <Typography variant="subtitle1" fontWeight={600} sx={{ fontSize: '1.2rem', color: 'inherit', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {capitalizeWords(data.label)}
           </Typography>
         </Box>
@@ -351,7 +351,7 @@ export const TracingToolNode = React.memo(({ id, data, isConnectable }) => {
         {data.group && (
           <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Typography variant="body2" color="text.secondary">Group</Typography>
-            <Typography variant="body2" fontWeight={600} color="inherit" sx={{ fontFamily: 'monospace', fontSize: '0.9em' }}>
+            <Typography variant="body2" fontWeight={600} color="inherit" sx={{ fontFamily: 'monospace', fontSize: '1.1em' }}>
               {data.group}
             </Typography>
           </Box>
