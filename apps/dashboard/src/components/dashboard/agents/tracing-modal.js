@@ -1900,18 +1900,54 @@ export function TracingModal({
                 }
               });
             } else {
-              // Bottom-to-top edge - modify connection points
-              finalEdges.push({
-                ...edge,
-                sourceHandle: 'top',    // Start from top of source node
-                targetHandle: 'bottom', // End at bottom of target node
-                type: 'smart',
-                zIndex: 1000, // High z-index to appear above nodes
-                style: {
-                  ...edge.style,
-                  zIndex: 1000, // High z-index to appear above nodes
+              // Bottom-to-top edge - check horizontal position for smart routing
+              const dx = Math.abs(sourcePos.x - targetPos.x);
+              const isSourceLeft = sourcePos.x < targetPos.x;
+              const isSourceRight = sourcePos.x > targetPos.x;
+              
+              // If A is significantly to the left or right of B, use side handles
+              if (dx > 100) { // 100px threshold for "significantly" offset
+                if (isSourceLeft) {
+                  // A is to the left of B - connect from right of A to left of B
+                  finalEdges.push({
+                    ...edge,
+                    sourceHandle: 'right',
+                    targetHandle: 'left',
+                    type: 'smart',
+                    zIndex: 1000,
+                    style: {
+                      ...edge.style,
+                      zIndex: 1000,
+                    }
+                  });
+                } else {
+                  // A is to the right of B - connect from left of A to right of B
+                  finalEdges.push({
+                    ...edge,
+                    sourceHandle: 'left',
+                    targetHandle: 'right',
+                    type: 'smart',
+                    zIndex: 1000,
+                    style: {
+                      ...edge.style,
+                      zIndex: 1000,
+                    }
+                  });
                 }
-              });
+              } else {
+                // A is directly below B - use top/bottom handles
+                finalEdges.push({
+                  ...edge,
+                  sourceHandle: 'top',    // Start from top of source node
+                  targetHandle: 'bottom', // End at bottom of target node
+                  type: 'smart',
+                  zIndex: 1000, // High z-index to appear above nodes
+                  style: {
+                    ...edge.style,
+                    zIndex: 1000, // High z-index to appear above nodes
+                  }
+                });
+              }
             }
           } else if (edgeGroup.length === 2) {
             // Bidirectional edges - determine if horizontal or vertical
