@@ -95,7 +95,7 @@ export const TracingToolNode = React.memo(({ id, data, isConnectable }) => {
           <Button
             sx={{
               position: 'absolute',
-              top: '-15px',
+              top: '-25px',
               right: '10px',
               minWidth: '24px',
               width: '24px',
@@ -129,7 +129,7 @@ export const TracingToolNode = React.memo(({ id, data, isConnectable }) => {
                 key={step}
                 sx={{
                   position: 'absolute',
-                  top: '-15px',
+                  top: '-25px',
                   right: `${10 + (index * 28)}px`,
                   minWidth: '24px',
                   width: '24px',
@@ -166,7 +166,7 @@ export const TracingToolNode = React.memo(({ id, data, isConnectable }) => {
           <Button
             sx={{
               position: 'absolute',
-              top: '-15px',
+              top: '-25px',
               right: '10px',
               minWidth: '40px',
               height: '24px',
@@ -349,7 +349,7 @@ export const TracingToolNode = React.memo(({ id, data, isConnectable }) => {
 
         {/* Group Information */}
         {data.group && (
-          <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
             <Typography variant="body2" color="text.secondary">Group</Typography>
             <Typography variant="body2" fontWeight={600} color="inherit" sx={{ fontFamily: 'monospace', fontSize: '1.1em' }}>
               {data.group}
@@ -360,7 +360,7 @@ export const TracingToolNode = React.memo(({ id, data, isConnectable }) => {
         {/* Tool Type Information */}
         <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Typography variant="body2" color="text.secondary">Tool Type</Typography>
-          <Typography variant="body2" fontWeight={600} color="inherit" sx={{ fontFamily: 'monospace', fontSize: '0.9em' }}>
+          <Typography variant="body2" fontWeight={600} color="inherit" sx={{ fontFamily: 'monospace', fontSize: '1.1em' }}>
             {data.toolType ? data.toolType : '—'}
           </Typography>
         </Box>

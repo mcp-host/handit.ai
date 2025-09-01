@@ -1224,7 +1224,7 @@ export function TracingModal({
   const [cycles, setCycles] = React.useState([]);
   const [selectedCycle, setSelectedCycle] = React.useState(0);
   const [regularEdges, setRegularEdges] = React.useState([]);
-  const [initialViewport, setInitialViewport] = React.useState({ x: 0, y: 0, zoom: 0.8 });
+  const [initialViewport, setInitialViewport] = React.useState({ x: 0, y: 0, zoom: 0.4 });
 
   // Effect to handle pre-selected node when modal opens
   React.useEffect(() => {
@@ -1684,9 +1684,9 @@ export function TracingModal({
       if (firstNode) {
         // Center the view on the first node with some zoom
         setInitialViewport({
-          x: -firstNode.position.x + 200, // Offset to center in viewport
-          y: -firstNode.position.y + 100, // Offset to center in viewport  
-          zoom: 0.8 // Nice zoom level to see details
+          x: -firstNode.position.x + 300, // Offset to center in viewport with more space
+          y: -firstNode.position.y + 150, // Offset to center in viewport with more space
+          zoom: 0.4 // Lower zoom level to see ~3 nodes at once
         });
         console.log('🎯 Centering view on first node:', firstNode.data.label, 'at position:', firstNode.position);
       }

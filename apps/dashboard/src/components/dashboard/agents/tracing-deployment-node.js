@@ -170,7 +170,7 @@ export const TracingDeploymentNode = React.memo(({ id, data, isConnectable }) =>
           <Button
             sx={{
               position: 'absolute',
-              top: '-15px',
+              top: '-25px',
               right: '10px',
               minWidth: '24px',
               width: '24px',
@@ -204,7 +204,7 @@ export const TracingDeploymentNode = React.memo(({ id, data, isConnectable }) =>
                 key={step}
                 sx={{
                   position: 'absolute',
-                  top: '-15px',
+                  top: '-25px',
                   right: `${10 + (index * 28)}px`,
                   minWidth: '24px',
                   width: '24px',
@@ -241,7 +241,7 @@ export const TracingDeploymentNode = React.memo(({ id, data, isConnectable }) =>
           <Button
             sx={{
               position: 'absolute',
-              top: '-15px',
+              top: '-25px',
               right: '10px',
               minWidth: '40px',
               height: '24px',
@@ -470,7 +470,7 @@ export const TracingDeploymentNode = React.memo(({ id, data, isConnectable }) =>
       >
         {/* Group Information */}
         {data.group && (
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 1.5, paddingLeft: 1.5, paddingRight: 1.5, overflow: 'hidden' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 1.5, paddingLeft: 1.5, paddingRight: 1.5, overflow: 'hidden', gap: 2 }}>
             <Typography variant="body2" color="text.secondary">
               Group
             </Typography>
