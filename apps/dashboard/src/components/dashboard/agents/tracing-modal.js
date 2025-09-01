@@ -1670,25 +1670,35 @@ export function TracingModal({
     }
   }, [nodes, edges, entry, selectedNode, selectedCycle, disableCycles]);
 
-  // Calculate viewport to center first node
+  // Calculate viewport to center first node or use fitView for small graphs
   const initialViewport = React.useMemo(() => {
     if (processedNodes.length > 0) {
-      // Find the first node (lowest Y position, then lowest X if tied)
-      const firstNode = processedNodes.reduce((first, current) => {
-        if (!first) return current;
-        if (current.position.y < first.position.y) return current;
-        if (current.position.y === first.position.y && current.position.x < first.position.x) return current;
-        return first;
-      }, null);
+      // Count unique Y levels
+      const uniqueYLevels = [...new Set(processedNodes.map(node => Math.round(node.position.y / 50) * 50))];
+      const shouldUseFitView = uniqueYLevels.length < 6;
+      
+      console.log('🎯 Y levels:', uniqueYLevels.length, 'shouldUseFitView:', shouldUseFitView);
+      
+      if (shouldUseFitView) {
+        // Use fitView for small graphs - return null to trigger fitView
+        return null;
+      } else {
+        // Find the first node for custom centering
+        const firstNode = processedNodes.reduce((first, current) => {
+          if (!first) return current;
+          if (current.position.y < first.position.y) return current;
+          if (current.position.y === first.position.y && current.position.x < first.position.x) return current;
+          return first;
+        }, null);
 
-      if (firstNode) {
-        // Center the first node on screen with proper calculation
-        // ReactFlow viewport: positive x/y moves the view, negative moves content
-        return {
-          x: -firstNode.position.x + 400, // Move first node to 400px from left (center-ish)
-          y: -firstNode.position.y + 150, // Move first node to 150px from top
-          zoom: 0.6 // Good balance between detail and overview
-        };
+        if (firstNode) {
+          // Center the first node on screen with proper calculation
+          return {
+            x: -firstNode.position.x + 400, // Move first node to 400px from left (center-ish)
+            y: -firstNode.position.y + 150, // Move first node to 150px from top
+            zoom: 0.6 // Good balance between detail and overview
+          };
+        }
       }
     }
     
@@ -2180,6 +2190,8 @@ export function TracingModal({
                         setSelectedStep(node.data.sequence[0]);
                       }}
                       defaultViewport={initialViewport}
+                      fitView={initialViewport === null}
+                      fitViewOptions={initialViewport === null ? { padding: 0.1 } : undefined}
                       nodesDraggable={false}
                       nodesConnectable={false}
                       minZoom={0.1}
