@@ -474,6 +474,44 @@ export const MonitoringNode = React.memo(({ id, data, isConnectable }) => {
               </Typography>
             </Box>
 
+            {/* Group Information */}
+            {data.group && (
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  borderRadius: 1,
+                  px: 1,
+                  py: 0.5,
+                  alignSelf: 'flex-start',
+                  fontWeight: 600,
+                  fontSize: '12px',
+                  mb: 1,
+                  display: 'block',
+                }}
+              >
+                Group: {data.group}
+              </Typography>
+            )}
+
+            {/* Status Indicator for AI Models */}
+            {data.type === 'model' && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    backgroundColor: data.status === 'error' ? '#D32F2F' : '#4CAF50',
+                  }}
+                />
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '12px' }}>
+                  {data.status === 'error' ? 'Error' : 'OK'}
+                </Typography>
+              </Box>
+            )}
+
             {/* Model Category */}
             {data.modelCategory && (
               <Typography

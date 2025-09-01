@@ -52,6 +52,8 @@ import { parseAttachments, parseContext, parseInputContent, parseOutputContent }
 import { useUser } from '@/hooks/use-user';
 
 import { MonitoringNode } from './monitoring-node';
+import { TracingDeploymentNode } from './tracing-deployment-node';
+import { TracingToolNode } from './tracing-tool-node';
 
 import 'react-responsive-carousel/lib/styles/carousel.min.css';
 
@@ -64,9 +66,11 @@ const Transition = React.forwardRef(function Transition(props, ref) {
   return <Slide direction="left" ref={ref} {...props} />;
 });
 
-// Register custom node type for ReactFlow
+// Register custom node types for tracing modal
 const nodeTypes = {
   custom: MonitoringNode,
+  deploymentCustom: TracingDeploymentNode,
+  toolCustom: TracingToolNode,
 };
 
 /**
@@ -1220,6 +1224,7 @@ export function TracingModal({
   const [cycles, setCycles] = React.useState([]);
   const [selectedCycle, setSelectedCycle] = React.useState(0);
   const [regularEdges, setRegularEdges] = React.useState([]);
+  const [initialViewport, setInitialViewport] = React.useState({ x: 0, y: 0, zoom: 0.8 });
 
   // Effect to handle pre-selected node when modal opens
   React.useEffect(() => {
@@ -1540,9 +1545,14 @@ export function TracingModal({
           return edge;
         });
         setRegularEdges([...updatedEdges]);
-        const newNodes = nodes.map((node) => {
+        const newNodes = nodes.map((node, index) => {
           return {
             ...node,
+            type: node.data.type === 'model' ? 'deploymentCustom' : node.data.type === 'tool' ? 'toolCustom' : 'custom',
+            position: {
+              ...node.position,
+              x: node.position.x * 1.5 // Add 50% more horizontal spacing
+            },
             data: {
               ...node.data,
               isSelected: node.id == selectedNode?.id ? true : false,
@@ -1551,6 +1561,7 @@ export function TracingModal({
               selectedCycleIndex: selectedCycle,
               disableCycles: disableCycles,
               allSteps: disableCycles ? node.data.sequence : undefined,
+              onClick: () => handleNodeClick(node),
             },
           };
         });
@@ -1612,6 +1623,11 @@ export function TracingModal({
         newNodes = newNodes.map((node) => {
           return {
             ...node,
+            type: node.data.type === 'model' ? 'deploymentCustom' : node.data.type === 'tool' ? 'toolCustom' : 'custom',
+            position: {
+              ...node.position,
+              x: node.position.x * 1.5 // Add 50% more horizontal spacing
+            },
             data: {
               ...node.data,
               isSelected: node.id == selectedNode?.id ? true : false,
@@ -1620,6 +1636,7 @@ export function TracingModal({
               selectedCycleIndex: selectedCycle,
               disableCycles: disableCycles,
               allSteps: disableCycles ? node.data.sequence : undefined,
+              onClick: () => handleNodeClick(node),
             },
           };
         });
@@ -1631,6 +1648,11 @@ export function TracingModal({
       const newNodes = nodes.map((node) => {
         return {
           ...node,
+          type: node.data.type === 'model' ? 'deploymentCustom' : node.data.type === 'tool' ? 'toolCustom' : 'custom',
+          position: {
+            ...node.position,
+            x: node.position.x * 1.5 // Add 50% more horizontal spacing
+          },
           data: {
             ...node.data,
             isSelected: node.id == selectedNode?.id ? true : false,
@@ -1639,6 +1661,7 @@ export function TracingModal({
             selectedCycleIndex: selectedCycle,
             disableCycles: disableCycles,
             allSteps: disableCycles ? node.data.sequence : undefined,
+            onClick: () => handleNodeClick(node),
           },
         };
       });
@@ -1646,6 +1669,29 @@ export function TracingModal({
       setRegularEdges(edges);
     }
   }, [nodes, edges, entry, selectedNode, selectedCycle, disableCycles]);
+
+  // Calculate initial viewport to center on first node
+  React.useEffect(() => {
+    if (processedNodes.length > 0) {
+      // Find the first node (lowest Y position, then lowest X if tied)
+      const firstNode = processedNodes.reduce((first, current) => {
+        if (!first) return current;
+        if (current.position.y < first.position.y) return current;
+        if (current.position.y === first.position.y && current.position.x < first.position.x) return current;
+        return first;
+      }, null);
+
+      if (firstNode) {
+        // Center the view on the first node with some zoom
+        setInitialViewport({
+          x: -firstNode.position.x + 200, // Offset to center in viewport
+          y: -firstNode.position.y + 100, // Offset to center in viewport  
+          zoom: 0.8 // Nice zoom level to see details
+        });
+        console.log('🎯 Centering view on first node:', firstNode.data.label, 'at position:', firstNode.position);
+      }
+    }
+  }, [processedNodes]);
 
   const handlePaneClick = () => {
     setSelectedNode(null);
@@ -1743,6 +1789,7 @@ export function TracingModal({
           ...edge.style,
           stroke: isHighlighted ? '#1976d2' : '#a7a7ab',
           strokeWidth: isHighlighted ? 5 : 2,
+          zIndex: 1000, // High z-index to appear above nodes
         },
         markerEnd: isHighlighted
           ? {
@@ -1755,6 +1802,7 @@ export function TracingModal({
             type: null,
           },
         animated: isHighlighted,
+        zIndex: 1000, // High z-index to appear above nodes
       };
     });
 
@@ -1770,6 +1818,7 @@ export function TracingModal({
           strokeWidth: 5,
           strokeDasharray: '5, 5',
           opacity: 1,
+          zIndex: 1000, // High z-index to appear above nodes
         },
         markerEnd: {
           type: MarkerType.ArrowClosed,
@@ -1779,6 +1828,7 @@ export function TracingModal({
         },
         type: 'smart',
         animated: true,
+        zIndex: 1000, // High z-index to appear above nodes
       }));
 
       // Helper function to get node position
@@ -1832,18 +1882,35 @@ export function TracingModal({
                 ...edge,
                 sourceHandle: isLeftToRight ? 'right' : 'left',
                 targetHandle: isLeftToRight ? 'left' : 'right',
-                type: 'straight'
+                type: 'straight',
+                zIndex: 1000, // High z-index to appear above nodes
+                style: {
+                  ...edge.style,
+                  zIndex: 1000, // High z-index to appear above nodes
+                }
               });
             } else if (!edge.isUpward) {
               // Regular top-to-bottom edge
-              finalEdges.push(edge);
+              finalEdges.push({
+                ...edge,
+                zIndex: 1000, // High z-index to appear above nodes
+                style: {
+                  ...edge.style,
+                  zIndex: 1000, // High z-index to appear above nodes
+                }
+              });
             } else {
               // Bottom-to-top edge - modify connection points
               finalEdges.push({
                 ...edge,
                 sourceHandle: 'top',    // Start from top of source node
                 targetHandle: 'bottom', // End at bottom of target node
-                type: 'smart'
+                type: 'smart',
+                zIndex: 1000, // High z-index to appear above nodes
+                style: {
+                  ...edge.style,
+                  zIndex: 1000, // High z-index to appear above nodes
+                }
               });
             }
           } else if (edgeGroup.length === 2) {
@@ -1876,7 +1943,12 @@ export function TracingModal({
                     width: 10,
                     height: 10,
                   },
-                  type: 'straight'
+                  type: 'straight',
+                  zIndex: 1000, // High z-index to appear above nodes
+                  style: {
+                    ...leftToRight.style,
+                    zIndex: 1000, // High z-index to appear above nodes
+                  }
                 });
               }
             } else {
@@ -1899,18 +1971,35 @@ export function TracingModal({
                     color: topToBottom.style?.stroke || '#1976d2',
                     width: 10,
                     height: 10,
+                  },
+                  zIndex: 1000, // High z-index to appear above nodes
+                  style: {
+                    ...topToBottom.style,
+                    zIndex: 1000, // High z-index to appear above nodes
                   }
                 });
               } else if (topToBottom) {
                 // Only top-to-bottom exists
-                finalEdges.push(topToBottom);
+                finalEdges.push({
+                  ...topToBottom,
+                  zIndex: 1000, // High z-index to appear above nodes
+                  style: {
+                    ...topToBottom.style,
+                    zIndex: 1000, // High z-index to appear above nodes
+                  }
+                });
               } else if (bottomToTop) {
                 // Only bottom-to-top exists - modify connection points
                 finalEdges.push({
                   ...bottomToTop,
                   sourceHandle: 'top',    // Start from top of source node
                   targetHandle: 'bottom', // End at bottom of target node
-                  type: 'smart'
+                  type: 'smart',
+                  zIndex: 1000, // High z-index to appear above nodes
+                  style: {
+                    ...bottomToTop.style,
+                    zIndex: 1000, // High z-index to appear above nodes
+                  }
                 });
               }
             }
@@ -2054,7 +2143,7 @@ export function TracingModal({
                         handleNodeClick(node);
                         setSelectedStep(node.data.sequence[0]);
                       }}
-                      fitView
+                      defaultViewport={initialViewport}
                       nodesDraggable={false}
                       nodesConnectable={false}
                       minZoom={0.1}
