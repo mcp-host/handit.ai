@@ -1682,13 +1682,20 @@ export function TracingModal({
       }, null);
 
       if (firstNode) {
-        // Center the view on the first node with some zoom
+        // Center the view on the first node with proper viewport centering
+        // Assuming viewport width ~1200px, center X should be at viewport_width/2
+        const viewportCenterX = 600; // Half of typical viewport width
+        const topPadding = 100; // More padding from top border
+        
         setInitialViewport({
-          x: -firstNode.position.x + 300, // Center X-axis on first node
-          y: -firstNode.position.y + 50,  // Position first node near top with padding
+          x: -firstNode.position.x + viewportCenterX, // Center X-axis on first node
+          y: -firstNode.position.y + topPadding,      // Position first node with proper top padding
           zoom: 0.4 // Lower zoom level to see ~3 nodes at once
         });
-        console.log('🎯 Centering view on first node:', firstNode.data.label, 'at position:', firstNode.position);
+        console.log('🎯 Centering view on first node:', firstNode.data.label, 'at position:', firstNode.position, 'viewport:', {
+          x: -firstNode.position.x + viewportCenterX,
+          y: -firstNode.position.y + topPadding
+        });
       }
     }
   }, [processedNodes]);
