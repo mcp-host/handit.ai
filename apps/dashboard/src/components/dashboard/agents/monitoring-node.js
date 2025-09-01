@@ -507,7 +507,7 @@ export const MonitoringNode = React.memo(({ id, data, isConnectable }) => {
                   }}
                 />
                 <Typography variant="caption" color="text.secondary" sx={{ fontSize: '12px' }}>
-                  {data.status === 'error' ? 'Error' : 'OK'}
+                  {data.status === 'error' ? 'Error' : 'Success'}
                 </Typography>
               </Box>
             )}

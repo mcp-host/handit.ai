@@ -310,7 +310,7 @@ export const TracingDeploymentNode = React.memo(({ id, data, isConnectable }) =>
         minWidth: 400,
         maxWidth: 400,
         border: '2px solid',
-        borderColor: isHovered || data.isSelected ? 'primary.main' : 'var(--mui-palette-divider, #222)',
+        borderColor: data.status === 'error' ? '#D32F2F' : (isHovered || data.isSelected ? 'primary.main' : 'var(--mui-palette-divider, #222)'),
         background: 'var(--mui-palette-background-default, #101214)',
         color: 'var(--mui-palette-text-primary, #fff)',
         borderRadius: '8px',
@@ -494,7 +494,7 @@ export const TracingDeploymentNode = React.memo(({ id, data, isConnectable }) =>
                 color="inherit"
                 sx={{ fontFamily: 'monospace', fontSize: '1.1em' }}
               >
-                {data.status === 'error' ? 'Error' : 'OK'}
+                {data.status === 'error' ? 'Error' : 'Success'}
               </Typography>
             </Box>
           </Box>

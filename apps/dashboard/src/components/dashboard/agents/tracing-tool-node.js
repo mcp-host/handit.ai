@@ -235,7 +235,7 @@ export const TracingToolNode = React.memo(({ id, data, isConnectable }) => {
         minWidth: 280,
         maxWidth: 300,
         border: '1.5px solid',
-        borderColor: isHovered || data.isSelected ? 'primary.main' : 'var(--mui-palette-divider, #222)',
+        borderColor: data.status === 'error' ? '#D32F2F' : (isHovered || data.isSelected ? 'primary.main' : 'var(--mui-palette-divider, #222)'),
         background: 'var(--mui-palette-background-default, #101214)',
         color: 'var(--mui-palette-text-primary, #fff)',
         borderRadius: '8px',
