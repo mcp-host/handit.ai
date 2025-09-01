@@ -1684,8 +1684,8 @@ export function TracingModal({
       if (firstNode) {
         // Center the view on the first node with some zoom
         setInitialViewport({
-          x: -firstNode.position.x + 300, // Offset to center in viewport with more space
-          y: -firstNode.position.y + 150, // Offset to center in viewport with more space
+          x: -firstNode.position.x + 300, // Center X-axis on first node
+          y: -firstNode.position.y + 50,  // Position first node near top with padding
           zoom: 0.4 // Lower zoom level to see ~3 nodes at once
         });
         console.log('🎯 Centering view on first node:', firstNode.data.label, 'at position:', firstNode.position);
