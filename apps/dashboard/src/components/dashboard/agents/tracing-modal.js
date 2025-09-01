@@ -1224,7 +1224,7 @@ export function TracingModal({
   const [cycles, setCycles] = React.useState([]);
   const [selectedCycle, setSelectedCycle] = React.useState(0);
   const [regularEdges, setRegularEdges] = React.useState([]);
-  const [initialViewport, setInitialViewport] = React.useState({ x: 0, y: 0, zoom: 0.4 });
+
 
   // Effect to handle pre-selected node when modal opens
   React.useEffect(() => {
@@ -1670,8 +1670,8 @@ export function TracingModal({
     }
   }, [nodes, edges, entry, selectedNode, selectedCycle, disableCycles]);
 
-  // Calculate initial viewport to center on first node
-  React.useEffect(() => {
+  // Calculate viewport to center first node
+  const initialViewport = React.useMemo(() => {
     if (processedNodes.length > 0) {
       // Find the first node (lowest Y position, then lowest X if tied)
       const firstNode = processedNodes.reduce((first, current) => {
@@ -1682,22 +1682,18 @@ export function TracingModal({
       }, null);
 
       if (firstNode) {
-        // Center the view on the first node with proper viewport centering
-        // Assuming viewport width ~1200px, center X should be at viewport_width/2
-        const viewportCenterX = 600; // Half of typical viewport width
-        const topPadding = 100; // More padding from top border
-        
-        setInitialViewport({
-          x: -firstNode.position.x + viewportCenterX, // Center X-axis on first node
-          y: -firstNode.position.y + topPadding,      // Position first node with proper top padding
-          zoom: 0.4 // Lower zoom level to see ~3 nodes at once
-        });
-        console.log('🎯 Centering view on first node:', firstNode.data.label, 'at position:', firstNode.position, 'viewport:', {
-          x: -firstNode.position.x + viewportCenterX,
-          y: -firstNode.position.y + topPadding
-        });
+        // Center the first node on screen with proper calculation
+        // ReactFlow viewport: positive x/y moves the view, negative moves content
+        return {
+          x: -firstNode.position.x + 400, // Move first node to 400px from left (center-ish)
+          y: -firstNode.position.y + 150, // Move first node to 150px from top
+          zoom: 0.6 // Good balance between detail and overview
+        };
       }
     }
+    
+    // Default viewport if no nodes
+    return { x: 250, y: 20, zoom: 0.4 };
   }, [processedNodes]);
 
   const handlePaneClick = () => {
@@ -1938,7 +1934,7 @@ export function TracingModal({
                     zIndex: 1000,
                   }
                 });
-              } else {
+      } else {
                 // A is directly below B (same X) - use right side for cleaner routing
                 finalEdges.push({
                   ...edge,

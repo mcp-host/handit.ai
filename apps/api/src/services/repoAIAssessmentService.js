@@ -1467,10 +1467,10 @@ export async function buildAssessmentFromFilesMarkdown({
     for (const p of prompts) {
       allPrompts.push({
         filePath: file.path,
-        type: p.type,
-        role: p.role || null,
-        model: p.model || null,
-        variables: p.variables || [],
+          type: p.type,
+          role: p.role || null,
+          model: p.model || null,
+          variables: p.variables || [],
         text: p.text,
       });
     }
@@ -1770,7 +1770,7 @@ export async function generatePromptBestPracticesAssessmentMarkdown({
     }
     return null;
   }
-  
+
   const messages = [
     {
       role: 'system',

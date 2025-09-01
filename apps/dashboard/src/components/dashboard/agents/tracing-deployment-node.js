@@ -433,18 +433,6 @@ export const TracingDeploymentNode = React.memo(({ id, data, isConnectable }) =>
           }}
         >
           {data.label || 'PROD'}
-          {versionLabel && (
-            <span
-              style={{
-                fontWeight: 400,
-                color: 'var(--mui-palette-text-secondary, #aaa)',
-                marginLeft: 8,
-                fontSize: '0.98em',
-              }}
-            >
-              - {versionLabel}
-            </span>
-          )}
         </Typography>
       </Box>
       
