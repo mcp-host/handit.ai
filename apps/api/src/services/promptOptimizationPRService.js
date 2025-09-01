@@ -743,6 +743,19 @@ CRITICAL RULES:
 8. Ensure the replacement fits naturally without changing surrounding code
 9. The output should be IDENTICAL to the input except for the prompt text replacement
 
+CRITICAL - VARIABLE INTERPOLATION PRESERVATION:
+10. If the original code uses variable interpolation (like \${variable}, {variable}, or similar patterns), you MUST preserve these exact interpolations in the optimized prompt
+11. DO NOT replace interpolated variables with static text from the optimized prompt
+12. The optimized prompt should work as a general template, not a specific instance
+13. Look for patterns like \${}, {}, {{}} and keep them exactly as they are in the original code
+14. If the optimized prompt contains specific values that should be variables, replace them with the original interpolation patterns
+
+EXAMPLE:
+- Original: "Hello \${userName}, please analyze this \${dataType}"
+- Optimized: "Hello John, please carefully examine this customer data" 
+- CORRECT Result: "Hello \${userName}, please carefully examine this \${dataType}"
+- WRONG Result: "Hello John, please carefully examine this customer data"
+
 IMPORTANT: If you see \\n in the optimized prompt, convert it to actual line breaks. Do not leave literal \\n characters in the code.
 
 Provide the complete new file content with ONLY the prompt text replaced and nothing else changed.`
