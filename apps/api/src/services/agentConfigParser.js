@@ -242,61 +242,63 @@ const repositionGraphNodesOriginal = (graph) => {
 // Simple group-based positioning by order
 const repositionGraphNodesWithGroups = async (graph) => {
   try {
-    console.log('🎯 Using simple group-based positioning by order...');
+    console.log('🎯 Using simple group-based positioning by node order...');
     
-    // Group nodes by their group field, preserving order
-    const groups = new Map();
-    const ungrouped = [];
-    
-    graph.nodes.forEach(node => {
-      if (node.group && node.group.trim() !== '') {
-        if (!groups.has(node.group)) {
-          groups.set(node.group, []);
-        }
-        groups.get(node.group).push(node);
-      } else {
-        ungrouped.push(node);
-      }
-    });
-    
-    // Convert groups to array and add ungrouped as last group
-    const groupArray = Array.from(groups.entries());
-    if (ungrouped.length > 0) {
-      groupArray.push(['ungrouped', ungrouped]);
-    }
-    
-    console.log(`📊 Found ${groupArray.length} groups:`, groupArray.map(([name, nodes]) => `${name}(${nodes.length})`));
-    
-    // Position each group
+    // Position nodes following their original order, changing Y when group changes
     const verticalSpacing = 400; // Space between groups
     const horizontalSpacing = 300; // Space between nodes in same group
-    let currentY = 0;
     
-    groupArray.forEach(([groupName, nodes], groupIndex) => {
-      console.log(`📍 Positioning group "${groupName}" with ${nodes.length} nodes at Y=${currentY}`);
+    let currentY = 0;
+    let currentGroup = null;
+    let currentGroupNodes = [];
+    
+    // Process nodes in their original order
+    graph.nodes.forEach((node, nodeIndex) => {
+      const nodeGroup = node.group && node.group.trim() !== '' ? node.group : 'ungrouped';
       
-      // Calculate total width needed for this group
-      const totalWidth = (nodes.length - 1) * horizontalSpacing;
-      const startX = -totalWidth / 2; // Center the group around X=0
+      // Check if group changed
+      if (currentGroup !== null && currentGroup !== nodeGroup) {
+        // Position the previous group's nodes horizontally centered
+        positionGroupNodes(currentGroupNodes, currentY, horizontalSpacing);
+        
+        // Move to next Y level for new group
+        currentY += verticalSpacing;
+        currentGroupNodes = [];
+        
+        console.log(`📍 Group changed from "${currentGroup}" to "${nodeGroup}", positioned previous group, moving to Y=${currentY}`);
+      }
       
-      // Position each node in the group horizontally
-      nodes.forEach((node, nodeIndex) => {
-        const x = startX + (nodeIndex * horizontalSpacing);
-        node.position = { x, y: currentY };
-        console.log(`  - ${node.name}: (${x}, ${currentY})`);
-      });
+      // Update current group and add node to current group
+      currentGroup = nodeGroup;
+      currentGroupNodes.push(node);
       
-      // Move to next Y level for next group
-      currentY += verticalSpacing;
+      console.log(`  - ${node.name}: group="${nodeGroup}" (will be positioned at Y=${currentY})`);
     });
     
-    console.log('✅ Applied simple group-based positioning');
+    // Position the last group
+    if (currentGroupNodes.length > 0) {
+      positionGroupNodes(currentGroupNodes, currentY, horizontalSpacing);
+    }
+    
+    console.log('✅ Applied simple group-based positioning by node order');
     return graph;
     
   } catch (error) {
     console.error('Error in simple group positioning, falling back to original logic:', error);
     return repositionGraphNodesOriginal(graph);
   }
+};
+
+// Helper function to position nodes in a group horizontally
+const positionGroupNodes = (nodes, y, horizontalSpacing) => {
+  const totalWidth = (nodes.length - 1) * horizontalSpacing;
+  const startX = -totalWidth / 2; // Center the group around X=0
+  
+  nodes.forEach((node, nodeIndex) => {
+    const x = startX + (nodeIndex * horizontalSpacing);
+    node.position = { x, y };
+    console.log(`  ✓ Positioned ${node.name}: (${x}, ${y})`);
+  });
 };
 
 // Simple spacing validation for group-based layout
