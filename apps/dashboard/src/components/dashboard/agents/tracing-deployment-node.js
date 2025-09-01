@@ -170,7 +170,7 @@ export const TracingDeploymentNode = React.memo(({ id, data, isConnectable }) =>
           <Button
             sx={{
               position: 'absolute',
-              top: '-35px',
+              top: '-40px',
               right: '10px',
               minWidth: '24px',
               width: '24px',
@@ -204,7 +204,7 @@ export const TracingDeploymentNode = React.memo(({ id, data, isConnectable }) =>
                 key={step}
                 sx={{
                   position: 'absolute',
-                  top: '-35px',
+                  top: '-40px',
                   right: `${10 + (index * 28)}px`,
                   minWidth: '24px',
                   width: '24px',
