@@ -42,6 +42,14 @@ export const createAgentNode = async ({
       active: true,
     });
 
+    // Add default correctness evaluator to the model
+    try {
+      await Model.addDefaultCorrectnessEvaluator(model.id, agent.companyId);
+    } catch (error) {
+      console.error('Failed to add correctness evaluator:', error);
+      // Don't fail the model creation if evaluator addition fails
+    }
+
     return await AgentNode.create({
       agentId: agent.id,
       name: model.name,

@@ -68,6 +68,9 @@ class UserService {
 
       let user = localStorage.getItem('user');
       user = JSON.parse(user);
+      if (onboardingCurrentTour === 'autonomous-engineer-setup' && user.onboardingCurrentTour && user.onboardingCurrentTour !== 'welcome-concept-walkthrough') {
+        return { message: 'You must complete the welcome concept walkthrough first' };
+      }
       user.onboardingCurrentTour = onboardingCurrentTour;
       localStorage.setItem('user', JSON.stringify(user));
 
@@ -128,6 +131,22 @@ class UserService {
       return response;
     } catch (error) {
       console.error('Error updating user profile:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if user has optimizations
+   * @returns {Promise<Object>} Optimization status data
+   */
+  async checkOptimizations() {
+    try {
+      const response = await makeApiCall('/users/me/optimizations', {
+        method: 'GET'
+      });
+      return response;
+    } catch (error) {
+      console.error('Error checking user optimizations:', error);
       throw error;
     }
   }

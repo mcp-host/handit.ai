@@ -20,6 +20,7 @@ const OnboardingAssistant = ({
   currentStep = 0, 
   totalSteps = 5, 
   onNext, 
+  onPrevious,
   onFinish,
   stepTitle = "Install HandIt",
   position = "bottom-right",
@@ -86,8 +87,8 @@ const OnboardingAssistant = ({
               color: 'white',
               borderRadius: 1.5,
               overflow: 'hidden',
-              minWidth: 500,
-              maxWidth: 500,
+              minWidth: 600,
+              maxWidth: 600,
               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
             }}
           >
@@ -124,7 +125,7 @@ const OnboardingAssistant = ({
                       width: 8,
                       height: 8,
                       borderRadius: '50%',
-                      bgcolor: index <= currentStep ? '#4A90E2' : '#666666',
+                      bgcolor: index <= currentStep ? '#71f2af' : '#666666',
                       transition: 'background-color 0.3s ease',
                     }}
                   />
@@ -162,7 +163,7 @@ const OnboardingAssistant = ({
                           borderRadius: 1.5,
                           '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
                           '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.3)' },
-                          '&.Mui-focused fieldset': { borderColor: '#4A90E2' },
+                          '&.Mui-focused fieldset': { borderColor: '#71f2af' },
                         },
                         '& .MuiOutlinedInput-input': {
                           color: 'white',
@@ -182,9 +183,9 @@ const OnboardingAssistant = ({
                               size="small"
                               disabled={!chatInput.trim()}
                               sx={{
-                                color: chatInput.trim() ? '#4A90E2' : 'rgba(255, 255, 255, 0.3)',
+                                color: chatInput.trim() ? '#71f2af' : 'rgba(255, 255, 255, 0.3)',
                                 '&:hover': {
-                                  bgcolor: 'rgba(74, 144, 226, 0.1)'
+                                  bgcolor: 'rgba(113, 242, 175, 0.1)'
                                 },
                                 '&.Mui-disabled': {
                                   color: 'rgba(255, 255, 255, 0.3)'
@@ -201,9 +202,32 @@ const OnboardingAssistant = ({
                 </Box>
 
                 <Stack direction="row" spacing={1.5}>
+                  {/* Back Button - Show on all steps except the very first step of the entire flow */}
+                  {currentStep > 0 && onPrevious && (
+                    <Button
+                      variant="text"
+                      onClick={onPrevious}
+                      sx={{
+                        color: 'white',
+                        textTransform: 'none',
+                        fontSize: '0.8rem',
+                        bgcolor: 'rgba(255, 255, 255, 0.1)',
+                        px: 2.5,
+                        py: 0.4,
+                        minHeight: 'unset',
+                        '&:hover': {
+                          bgcolor: 'rgba(255, 255, 255, 0.2)'
+                        }
+                      }}
+                    >
+                      Back
+                    </Button>
+                  )}
+                  
+                  {/* Next Button - Always show */}
                   <Button
                     variant="text"
-                    onClick={isLastStep ? onFinish : onNext}
+                    onClick={onNext}
                     sx={{
                       color: 'white',
                       textTransform: 'none',
@@ -220,6 +244,7 @@ const OnboardingAssistant = ({
                     Next
                   </Button>
                   
+                  {/* Finish Button - Always show */}
                   <Button
                     variant="text"
                     onClick={onFinish}

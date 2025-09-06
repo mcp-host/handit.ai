@@ -1,5 +1,5 @@
 'use strict';
-import { Model, Op } from 'sequelize';
+import { Model } from 'sequelize';
 export default (sequelize, DataTypes) => {
   class ModelVersion extends Model {
     static associate(models) {

@@ -102,6 +102,39 @@ class GitHubClient {
     return this.request(`/repos/${owner}/${repo}/git/ref/${ref}`);
   }
 
+  // Get all branches for a repository (with pagination support)
+  async getBranches(owner, repo) {
+    const allBranches = [];
+    let page = 1;
+    const perPage = 100; // Maximum per page
+    
+    while (true) {
+      const branches = await this.request(`/repos/${owner}/${repo}/branches?page=${page}&per_page=${perPage}`);
+      
+      if (!branches || branches.length === 0) {
+        break;
+      }
+      
+      allBranches.push(...branches);
+      
+      // If we got fewer than perPage results, we've reached the end
+      if (branches.length < perPage) {
+        break;
+      }
+      
+      page++;
+    }
+    
+    console.log(`🔍 GitHub API returned ${allBranches.length} total branches`);
+    return allBranches;
+  }
+
+  // Get repository tree (much faster than recursive content calls)
+  async getTree(owner, repo, sha, recursive = true) {
+    const params = recursive ? '?recursive=1' : '';
+    return this.request(`/repos/${owner}/${repo}/git/trees/${sha}${params}`);
+  }
+
   async createRef(owner, repo, ref, sha) {
     
     // Validate inputs

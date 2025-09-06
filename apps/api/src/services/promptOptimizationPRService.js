@@ -471,7 +471,7 @@ const generateSearchStrategies = (originalPrompt) => {
 // Local clone search fallback when GitHub API fails - reuses existing utilities
 async function searchPromptViaLocalClone(githubClient, owner, repo, originalPrompt) {
   // Import the existing utilities from repoAIAssessmentService
-  const { cloneRepoShallow, getDefaultBranchName } = await import('./repoAIAssessmentService.js');
+  const { cloneRepoShallow, getDefaultBranchName } = await import('../controllers/githubController/repoAIAssessmentService.js');
   const { rm } = await import('fs/promises');
 
   try {

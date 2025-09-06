@@ -15,7 +15,7 @@ import {
 } from '@phosphor-icons/react';
 
   // Custom hook for typing animation
-  const useTypingAnimation = (text, speed = 30, startDelay = 0) => {
+  const useTypingAnimation = (text, speed = 15, startDelay = 0) => {
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
@@ -67,13 +67,14 @@ const OnboardingBanner = React.memo(({
   arrow = 'none', // 'top', 'bottom', 'left', 'right', 'none'
   actions = [], // Array of action buttons
   showCloseButton = true,
-  typingSpeed = 30, // Speed of typing animation in milliseconds
+  typingSpeed = 15, // Speed of typing animation in milliseconds
+  content = {}, // Content object that may contain codeSnippet
 }) => {
   const [visible, setVisible] = useState(open);
   
   // Typing animations for title and message
   const titleTyping = useTypingAnimation(title, typingSpeed, 0);
-  const messageTyping = useTypingAnimation(message, typingSpeed, title ? 150 : 0); // Delay message if title exists
+  const messageTyping = useTypingAnimation(message, typingSpeed, title ? 100 : 0); // Reduced delay for faster experience
 
   useEffect(() => {
     setVisible(open);
@@ -99,7 +100,7 @@ const OnboardingBanner = React.memo(({
     const variants = {
       info: {
         bgcolor: '#2a2a2a',
-        borderColor: '#42a5f5',
+        borderColor: '#71f2af',
         color: 'white'
       },
       warning: {
@@ -109,7 +110,7 @@ const OnboardingBanner = React.memo(({
       },
       success: {
         bgcolor: '#2a2a2a',
-        borderColor: '#4caf50',
+        borderColor: '#71f2af',
         color: 'white'
       },
       error: {
@@ -199,7 +200,7 @@ const OnboardingBanner = React.memo(({
           left: position.left,
           transform: position.transform,
           zIndex: 9997,
-          maxWidth: 400,
+          maxWidth: 500,
           borderRadius: 1.5,
         }}
       >
@@ -279,6 +280,31 @@ const OnboardingBanner = React.memo(({
                   />
                 )}
               </Typography>
+
+              {/* Code Snippet */}
+              {content?.codeSnippet && (
+                <Box sx={{ mb: 2 }}>
+                  <Card sx={{ 
+                    bgcolor: 'rgba(0, 0, 0, 0.3)', 
+                    p: 2, 
+                    borderRadius: 1,
+                    border: '1px solid rgba(255, 255, 255, 0.1)'
+                  }}>
+                    {content.codeSnippet.commands?.map((command, index) => (
+                      <Box key={index} sx={{ mb: index < content.codeSnippet.commands.length - 1 ? 1 : 0 }}>
+                        <Typography variant="body2" sx={{ 
+                          fontFamily: 'monospace', 
+                          color: '#00ff00',
+                          fontSize: '0.875rem',
+                          lineHeight: 1.4
+                        }}>
+                          $ {command}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Card>
+                </Box>
+              )}
 
               {/* Action Buttons - Only show when message typing is complete */}
               {actions.length > 0 && messageTyping.isComplete && (

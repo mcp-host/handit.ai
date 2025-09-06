@@ -6,6 +6,7 @@ class OnboardingService {
     this.config = onboardingConfig.tourConfig;
     this.currentTour = null;
     this.currentStepIndex = 0;
+    this.formValues = {}; // Track form values across steps
     this.userState = {
       loginCount: 1,
       signupCompleted: true,
@@ -94,6 +95,17 @@ class OnboardingService {
     }
   }
 
+  // Evaluate step conditions for conditional display
+  evaluateStepCondition(condition) {
+    if (!condition.field || !condition.value) {
+      return true;
+    }
+
+    // Check form values first, then user state
+    const formValue = this.formValues?.[condition.field] || this.userState[condition.field];
+    return formValue === condition.value;
+  }
+
   // Get tour by ID
   getTour(tourId) {
     return this.config.tours.find((tour) => tour.id === tourId);
@@ -121,6 +133,14 @@ class OnboardingService {
     }
 
     const step = this.currentTour.steps[this.currentStepIndex];
+    
+    // Check if step should be shown based on conditions
+    if (step.showOnlyIf && !this.evaluateStepCondition(step.showOnlyIf)) {
+      // Skip this step and move to next
+      this.currentStepIndex++;
+      return this.getCurrentStep();
+    }
+
     return this.processStepContent(step);
   }
 
@@ -185,6 +205,20 @@ class OnboardingService {
         stepId: currentStep.id,
         userId: this.userState.userId,
       });
+
+      // Handle conditional navigation
+      if (currentStep.conditionalNavigation) {
+        const fieldValue = this.formValues[currentStep.conditionalNavigation.field];
+        const targetStepId = currentStep.conditionalNavigation.branches[fieldValue];
+        
+        if (targetStepId) {
+          console.log(`Conditional navigation: ${fieldValue} -> ${targetStepId}`);
+          const targetStep = this.setCurrentStepById(targetStepId);
+          if (targetStep) {
+            return targetStep;
+          }
+        }
+      }
     }
 
     this.currentStepIndex++;
@@ -381,10 +415,39 @@ class OnboardingService {
     };
   }
 
+  // Get current tour
+  getCurrentTour() {
+    return this.currentTour;
+  }
+
+  // Set current step by ID
+  setCurrentStepById(stepId) {
+    if (!this.currentTour) return null;
+    
+    const stepIndex = this.currentTour.steps.findIndex(step => step.id === stepId);
+    if (stepIndex !== -1) {
+      this.currentStepIndex = stepIndex;
+      return this.getCurrentStep();
+    }
+    return null;
+  }
+
+  // Update form values
+  updateFormValue(fieldName, value) {
+    this.formValues[fieldName] = value;
+    console.log('Updated form values:', this.formValues);
+  }
+
+  // Get form values
+  getFormValues() {
+    return this.formValues;
+  }
+
   // Reset service
   reset() {
     this.currentTour = null;
     this.currentStepIndex = 0;
+    this.formValues = {};
     this.analytics = [];
     this.userState = {
       loginCount: 1,
@@ -396,6 +459,13 @@ class OnboardingService {
       agentName: null,
       integrationToken: null,
     };
+  }
+
+  // Clear onboarding state from localStorage
+  clearOnboardingState() {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('onboardingState');
+    }
   }
 }
 

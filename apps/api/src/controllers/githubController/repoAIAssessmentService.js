@@ -1,5 +1,5 @@
-import GitHubClient from './githubClient.js';
-import { generateAIResponse } from './aiService.js';
+import GitHubClient from '../../services/githubClient.js';
+import { generateAIResponse } from '../../services/aiService.js';
 import path from 'path';
 import { mkdtemp, rm, readFile as fsReadFile, readdir } from 'fs/promises';
 import { tmpdir } from 'os';
@@ -1038,10 +1038,21 @@ async function assessRepositoryWithHintsFlow({
   let frameworksDetected = new Set();
 
   try {
-    const allFiles = await listFilesRecursive(localPath, 0, 6);
+    console.log('🚀 Starting parallel post-clone operations');
+    
+    // Parallelize post-clone operations for better performance
+    const [allFiles] = await Promise.all([
+      // Scan repository file structure
+      listFilesRecursive(localPath, 0, 6),
+      
+      // Note: Agent file reading moved to controller for better parallelization
+    ]);
+
     const relativeFiles = allFiles
       .filter(isSearchableFileLocal)
       .map((p) => path.relative(localPath, p));
+
+    console.log('🚀 Post-clone operations completed, starting AI analysis');
 
     // 2) Ask LLM to pick candidate files based on hints + repo structure
     const llmCandidates = await pickCandidatesFromHints({
@@ -1062,17 +1073,21 @@ async function assessRepositoryWithHintsFlow({
     console.log('candidateSet', candidateSet);
     const candidates = Array.from(candidateSet).slice(0, 25);
 
-    // 3) Read candidate file contents from local clone
-    const candidateFilesWithContent = [];
-    for (const rel of candidates) {
-      try {
-        const abs = path.join(localPath, rel);
-        const content = await fsReadFile(abs, 'utf-8');
-        candidateFilesWithContent.push({ path: rel, content });
-      } catch {
-        // skip unreadable
-      }
-    }
+    // 3) Read candidate file contents from local clone in parallel
+    console.log('🚀 Reading candidate files in parallel');
+    const candidateFilesWithContent = await Promise.all(
+      candidates.map(async (rel) => {
+        try {
+          const abs = path.join(localPath, rel);
+          const content = await fsReadFile(abs, 'utf-8');
+          return { path: rel, content };
+        } catch {
+          return null; // skip unreadable
+        }
+      })
+    ).then(results => results.filter(Boolean)); // Remove null entries
+    
+    console.log(`✅ Read ${candidateFilesWithContent.length} candidate files in parallel`);
 
     // 4) Heuristically and (if needed) with LLM, detect up to 2 prompts
     let promptsSelected = [];

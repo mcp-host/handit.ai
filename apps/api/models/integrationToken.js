@@ -78,10 +78,58 @@ export default (sequelize, DataTypes) => {
       afterCreate: async (integrationToken) => {
         const company = await sequelize.models.Company.findByPk(integrationToken.companyId);
         if (company) {
+          // Set as optimization token if none exists
           if (company.optimizationTokenId === null) {
             company.optimizationTokenId = integrationToken.id;
             await company.save();
           }
+        }
+
+        // Set default model based on provider
+        const provider = await sequelize.models.Provider.findByPk(integrationToken.providerId);
+        if (provider) {
+          let defaultModel;
+          switch (provider.name.toLowerCase()) {
+            case 'togetherai':
+              defaultModel = 'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8';
+              break;
+            case 'openai':
+              defaultModel = 'gpt-4o-mini';
+              break;
+            case 'googleai':
+              defaultModel = 'gemini-2.5-flash';
+              break;
+            case 'awsbedrock':
+              defaultModel = 'anthropic.claude-3-haiku-20240307-v1:0';
+              break;
+            default:
+              console.warn(`No default model defined for provider: ${provider.name}`);
+              return;
+          }
+
+          // Update integration token with default model
+          integrationToken.data = {
+            ...integrationToken.data,
+            defaultModel: defaultModel
+          };
+          await integrationToken.save();
+
+          // Find all evaluation prompts for this company that don't have a default integration token
+          const evaluationPrompts = await sequelize.models.EvaluationPrompt.findAll({
+            where: {
+              companyId: integrationToken.companyId,
+              defaultIntegrationTokenId: null
+            }
+          });
+
+          // Assign this integration token to evaluation prompts that don't have one
+          for (const prompt of evaluationPrompts) {
+            prompt.defaultIntegrationTokenId = integrationToken.id;
+            prompt.defaultProviderModel = defaultModel;
+            await prompt.save();
+          }
+
+          console.log(`Assigned integration token ${integrationToken.id} to ${evaluationPrompts.length} evaluation prompts for company ${integrationToken.companyId}`);
         }
       },
     },

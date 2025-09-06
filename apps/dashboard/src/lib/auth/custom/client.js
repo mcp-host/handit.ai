@@ -148,6 +148,15 @@ class AuthClient {
     localStorage.removeItem('custom-auth-token');
     localStorage.removeItem('onboardingState');
 
+    // Clear onboarding service state
+    try {
+      const { onboardingService } = await import('@/services/onboarding/onboardingService');
+      onboardingService.clearOnboardingState();
+      onboardingService.reset();
+    } catch (error) {
+      console.warn('Could not clear onboarding service:', error);
+    }
+
     // Dispatch logout action to clear auth state
     store.dispatch({ type: 'auth/logout' });
 

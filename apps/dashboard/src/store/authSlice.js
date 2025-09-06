@@ -142,10 +142,11 @@ const authSlice = createSlice({
       if (typeof window !== 'undefined') {
         localStorage.removeItem('custom-auth-token');
         localStorage.removeItem('user');
+        localStorage.removeItem('onboardingState');
 
         // Clear all session data
         sessionStorage.clear(); // Clear sessionStorage
-        localStorage.clear(); // Clear all localStorage data
+        // Note: We don't clear all localStorage to preserve user preferences like 'environment'
       }
     },
   },

@@ -26,6 +26,7 @@ import { TerminalWindow } from '@phosphor-icons/react';
 import { FloppyDisk } from '@phosphor-icons/react';
 import { Plus } from '@phosphor-icons/react';
 import { Upload as UploadIcon } from '@phosphor-icons/react';
+import { GithubLogo } from '@phosphor-icons/react';
 
 
 import { AgentSwitch } from '../agent-switch';
@@ -34,10 +35,11 @@ import { UserPopover } from '../user-popover/user-popover';
 import { XCircle } from '@phosphor-icons/react';
 import { useGetUserQuery } from '@/services/auth/authService';
 import { dark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
-import { CircularProgress, DialogActions, DialogContentText } from '@mui/material';
+import { CircularProgress, DialogActions, DialogContentText, Alert, AlertTitle } from '@mui/material';
 import { ModelsSwitch } from '../models-switch';
 import { paths } from '@/paths';
 import { ConnectAgentDialog } from '@/components/dashboard/agents/connect-agent-dialog';
+import { ReminderDialog } from './reminder-banner';
 
 export function MainNav({ items, title, onNewEvaluator }) {
   const [openNav, setOpenNav] = React.useState(false);
@@ -47,6 +49,9 @@ export function MainNav({ items, title, onNewEvaluator }) {
   
   // State to track if we're in walkthrough mode
   const [isInWalkthrough, setIsInWalkthrough] = React.useState(false);
+  
+  // State to track if onboarding is currently active
+  const [isOnboardingActive, setIsOnboardingActive] = React.useState(false);
   
   // Fetch both regular and demo agents
   const { data: regularAgents = [], refetch: refetchRegularAgents, isLoading: isLoadingRegularAgents } = useGetAgentsQuery({});
@@ -70,7 +75,15 @@ export function MainNav({ items, title, onNewEvaluator }) {
   const fileInputRef = React.useRef(null);
   const [uploadAgent] = useUploadAgentMutation();
   const [uploadLoading, setUploadLoading] = React.useState(false);
+  const [pullRequests, setPullRequests] = React.useState([]);
+  const [pullRequestsLoading, setPullRequestsLoading] = React.useState(false);
+  const [readyToCheck, setReadyToCheck] = React.useState(false);
 
+  React.useEffect(() => {
+    setTimeout(() => {
+      setReadyToCheck(true);
+    }, 5000);
+  }, [userData]);
 
   // Get current environment
   const environment = React.useMemo(() => {
@@ -228,6 +241,31 @@ export function MainNav({ items, title, onNewEvaluator }) {
     }
   };
 
+  // Fetch user's pull requests
+  const fetchPullRequests = async () => {
+    setPullRequestsLoading(true);
+    try {
+      const token = localStorage.getItem('custom-auth-token');
+      if (!token) return;
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/git/pull-requests`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPullRequests(data.pullRequests || []);
+      }
+    } catch (error) {
+      console.error('Error fetching pull requests:', error);
+    } finally {
+      setPullRequestsLoading(false);
+    }
+  };
+
   // Listen for onboarding tour events to switch between regular and demo agents
   React.useEffect(() => {
     const checkWalkthroughState = () => {
@@ -290,19 +328,70 @@ export function MainNav({ items, title, onNewEvaluator }) {
       refetchDemoAgents();
     };
 
+    // Listen for onboarding completion to fetch PRs
+    const handleOnboardingComplete = (event) => {
+      // Check if onboarding was just completed (active: false)
+      if (event.detail && event.detail.active === false) {
+        console.log('Onboarding completed, fetching PRs...');
+        fetchPullRequests();
+      }
+    };
+
     window.addEventListener('onboarding:start-tour', handleStartTour);
     window.addEventListener('onboarding:change-tour', handleOnboardingStateChange);
     window.addEventListener('onboarding:connection-success', handleConnectionSuccess);
+    window.addEventListener('onboardingStateChange', handleOnboardingComplete);
 
     return () => {
       window.removeEventListener('onboarding:start-tour', handleStartTour);
       window.removeEventListener('onboarding:change-tour', handleOnboardingStateChange);
       window.removeEventListener('onboarding:connection-success', handleConnectionSuccess);
+      window.removeEventListener('onboardingStateChange', handleOnboardingComplete);
       if (debounceTimeout) {
         clearTimeout(debounceTimeout);
       }
     };
   }, [isInWalkthrough, refetchRegularAgents, refetchDemoAgents]);
+
+  // Track onboarding state for reminder banner
+  React.useEffect(() => {
+    const checkOnboardingState = () => {
+      try {
+        const savedState = localStorage.getItem('onboardingState');
+        if (savedState) {
+          const state = JSON.parse(savedState);
+          const isActive = state.isActive === true;
+          if (isActive !== isOnboardingActive) {
+            setIsOnboardingActive(isActive);
+          }
+        } else if (isOnboardingActive) {
+          setIsOnboardingActive(false);
+        }
+      } catch (error) {
+        console.error('Error checking onboarding state:', error);
+        setIsOnboardingActive(false);
+      }
+    };
+
+    // Initial check
+    checkOnboardingState();
+
+    // Listen for onboarding state changes
+    const handleOnboardingStateChange = () => {
+      checkOnboardingState();
+    };
+
+    window.addEventListener('onboardingStateChange', handleOnboardingStateChange);
+    
+    return () => {
+      window.removeEventListener('onboardingStateChange', handleOnboardingStateChange);
+    };
+  }, [isOnboardingActive]);
+
+  // Fetch pull requests on component mount
+  React.useEffect(() => {
+    fetchPullRequests();
+  }, []);
 
   // Handle connection success
   React.useEffect(() => {
@@ -327,6 +416,12 @@ export function MainNav({ items, title, onNewEvaluator }) {
     window.addEventListener('selectAgent', handleSelectAgent);
     return () => window.removeEventListener('selectAgent', handleSelectAgent);
   }, [handleAgentChange]);
+
+  // Determine button state and latest PR
+  const hasNoAgents = regularAgents.length === 0 && !isLoadingRegularAgents;
+  const hasPullRequests = pullRequests.length > 0;
+  const latestPR = pullRequests.length > 0 ? pullRequests[0] : null;
+  const shouldShowReviewPR = hasNoAgents && hasPullRequests && !isInWalkthrough;
 
   return (
     <React.Fragment>
@@ -528,14 +623,63 @@ export function MainNav({ items, title, onNewEvaluator }) {
               </Button>
             )}
             
-            {/* Existing buttons */}
-            {(
+            {/* Message and Action Button */}
+            {(isInWalkthrough || hasNoAgents) && (
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  color: '#71f2af', // Handit green color
+                  mr: 2,
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  backgroundColor: 'rgba(113, 242, 175, 0.1)',
+                  px: 1.5,
+                  py: 0.5,
+                  borderRadius: 1,
+                  border: '1px solid rgba(113, 242, 175, 0.3)'
+                }}
+              >
+                {isInWalkthrough 
+                  ? "Set up your autonomous engineer to unlock AI optimization."
+                  : shouldShowReviewPR
+                    ? "Your handit integration is ready! Review the connection PR."
+                    : "Set up your autonomous engineer to unlock AI optimization."
+                }
+              </Typography>
+            )}
+            
+            {/* Action Button - Review PR or Connect Agent */}
+            {shouldShowReviewPR ? (
               <Button
                 variant="outlined"
                 color="primary"
                 onClick={() => {
-                  window.dispatchEvent(new CustomEvent('openOnboardingChat', { 
-                    detail: { mode: 'assistant', message: 'I want to connect my agent to Handit' } 
+                  if (latestPR?.prUrl) {
+                    window.open(latestPR.prUrl, '_blank');
+                  }
+                }}
+                startIcon={<GithubLogo size={16} />}
+                data-testid="review-pr-button"
+                sx={{
+                  borderColor: 'transparent',
+                  color: 'primary.main',
+                  '&:hover': {
+                    backgroundColor: 'primary.main',
+                    color: 'primary.contrastText',
+                  },
+                  backgroundColor: 'rgba(117,120,255, 0.2)',
+                }}
+              >
+                Review PR
+              </Button>
+            ) : (
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={() => {
+                  // Start the specific tour directly (like automatic start does)
+                  window.dispatchEvent(new CustomEvent('onboarding:start-tour', {
+                    detail: { tourId: 'autonomous-engineer-setup' }
                   }));
                 }}
                 startIcon={<TerminalWindow size={16} />}
@@ -550,7 +694,7 @@ export function MainNav({ items, title, onNewEvaluator }) {
                   backgroundColor: 'rgba(117,120,255, 0.2)',
                 }}
               >
-                Connect Agent
+                {hasNoAgents ? 'Get Started' : 'Set Up a new Engineer'}
               </Button>
             )}
           </Stack>
@@ -562,6 +706,16 @@ export function MainNav({ items, title, onNewEvaluator }) {
           setOpenNav(false);
         }}
         open={openNav}
+      />
+
+      {/* Reminder Dialog for users without agents */}
+      <ReminderDialog 
+        hasNoAgents={hasNoAgents}
+        hasPullRequests={hasPullRequests}
+        isInWalkthrough={isInWalkthrough}
+        isOnboardingActive={isOnboardingActive}
+        readyToCheck={readyToCheck}
+        pullRequests={pullRequests}
       />
 
       {/* Connect Agent Dialog */}

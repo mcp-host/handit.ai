@@ -18,6 +18,15 @@ export const createModel = async (req, res) => {
     })
     const { datasetIds } = req.body;
     const model = await Model.create({...req.body, modelGroupId: modelGroup.id});
+    
+    // Add default correctness evaluator to the model
+    try {
+      await Model.addDefaultCorrectnessEvaluator(model.id, companyId);
+    } catch (error) {
+      console.error('Failed to add correctness evaluator:', error);
+      // Don't fail the model creation if evaluator addition fails
+    }
+    
     if (datasetIds) {
       await model.setDatasetsByIds(datasetIds);
     }

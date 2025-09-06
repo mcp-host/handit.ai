@@ -56,6 +56,43 @@ export default (sequelize, DataTypes) => {
       return prompt;
     }
 
+    /**
+     * Automatically add the correctness evaluator to a newly created model
+     * @param {number} modelId - The ID of the model
+     * @param {number} companyId - The ID of the company
+     * @returns {Promise<Object|null>} - Created ModelEvaluationPrompt or null if not found
+     */
+    static async addDefaultCorrectnessEvaluator(modelId, companyId) {
+      try {
+        // Find the correctness evaluator for this company
+        const correctnessEvaluator = await sequelize.models.EvaluationPrompt.findOne({
+          where: {
+            name: 'Correctness Evaluation',
+            companyId: companyId
+          }
+        });
+
+        if (correctnessEvaluator) {
+          // Add the evaluator to the model
+          const modelEvaluationPrompt = await sequelize.models.ModelEvaluationPrompt.create({
+            modelId: modelId,
+            evaluationPromptId: correctnessEvaluator.id,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+
+          console.log(`Added correctness evaluator to model ${modelId} for company ${companyId}`);
+          return modelEvaluationPrompt;
+        } else {
+          console.warn(`Correctness evaluator not found for company ${companyId}`);
+          return null;
+        }
+      } catch (error) {
+        console.error('Error adding default correctness evaluator:', error);
+        return null;
+      }
+    }
+
     async allEvaluationPrompts() {
       const modelGroup = await this.getModelGroup();
       const company = await modelGroup.getCompany();
@@ -1526,7 +1563,7 @@ export default (sequelize, DataTypes) => {
         correctEntriesByDay[date.toUTCString()] = 0;
       }
 
-      for (const [key, value] of Object.entries(correctEntriesByDay)) {
+      for (const [key] of Object.entries(correctEntriesByDay)) {
         correctEntriesByDay[key] = 70 + Math.floor(Math.random() * 30);
       }
 
@@ -1545,7 +1582,7 @@ export default (sequelize, DataTypes) => {
         incorrectEntriesByDay[date.toUTCString()] = 0;
       }
 
-      for (const [key, value] of Object.entries(incorrectEntriesByDay)) {
+      for (const [key] of Object.entries(incorrectEntriesByDay)) {
         incorrectEntriesByDay[key] = Math.floor(Math.random() * 30);
       }
 

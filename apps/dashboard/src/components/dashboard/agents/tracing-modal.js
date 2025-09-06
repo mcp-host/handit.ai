@@ -1209,6 +1209,12 @@ export function TracingModal({
   onNodeUpdate = () => { },
   preSelectedNodeId = null,
 }) {
+  // Get user data to check onboarding state
+  const { user } = useUser();
+  
+  // Track onboarding active state
+  const [isOnboardingActive, setIsOnboardingActive] = React.useState(false);
+  
   // Flag to disable cycles functionality - set to true to show all entries in one flow
   const [disableCycles, setDisableCycles] = React.useState(true);
   
@@ -1225,6 +1231,24 @@ export function TracingModal({
   const [selectedCycle, setSelectedCycle] = React.useState(0);
   const [regularEdges, setRegularEdges] = React.useState([]);
 
+  // Listen for onboarding state changes
+  React.useEffect(() => {
+    const handleOnboardingStateChange = (event) => {
+      setIsOnboardingActive(event.detail.active);
+    };
+
+    // Check initial state
+    if (typeof window !== 'undefined' && window.__onboardingActive) {
+      setIsOnboardingActive(true);
+    }
+
+    // Listen for changes
+    window.addEventListener('onboardingStateChange', handleOnboardingStateChange);
+
+    return () => {
+      window.removeEventListener('onboardingStateChange', handleOnboardingStateChange);
+    };
+  }, []);
 
   // Effect to handle pre-selected node when modal opens
   React.useEffect(() => {
@@ -1244,15 +1268,18 @@ export function TracingModal({
       const nodeToSelect = nodes.find((node) => node?.data?.initialNode);
 
       if (nodeToSelect) {
-        const step = nodeToSelect?.data?.sequence?.[0];
-        setSelectedNode(nodeToSelect);
-        setSelectedStep(step);
-        setCurrentStepIndex(0);
-        const path = findStepPath(step);
-        setHighlightedPath(path);
+        // Check if onboarding is currently active - don't auto-select node during onboarding
+        if (!isOnboardingActive) {
+          const step = nodeToSelect?.data?.sequence?.[0];
+          setSelectedNode(nodeToSelect);
+          setSelectedStep(step);
+          setCurrentStepIndex(0);
+          const path = findStepPath(step);
+          setHighlightedPath(path);
+        }
       }
     }
-  }, [open, preSelectedNodeId, nodes]);
+  }, [open, preSelectedNodeId, nodes, isOnboardingActive]);
 
   // Add effect to detect cycles when nodes change
   React.useEffect(() => {

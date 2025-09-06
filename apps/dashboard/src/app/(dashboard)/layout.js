@@ -47,6 +47,12 @@ function LayoutInner({ children }) {
   const { user, checkSession } = useUser();
   const [showOnboarding, setShowOnboarding] = React.useState(false);
   const [connectionStatus, setConnectionStatus] = React.useState('disconnected');
+  const [hasOptimizations, setHasOptimizations] = React.useState(false);
+  const [optimizationPRs, setOptimizationPRs] = React.useState([]);
+  const [optimizedModels, setOptimizedModels] = React.useState([]);
+  const [hasOptimizationPRs, setHasOptimizationPRs] = React.useState(false);
+  const [isCheckingOptimizations, setIsCheckingOptimizations] = React.useState(false);
+  const hasCheckedOptimizations = React.useRef(false);
   
   // Check if user has agents to determine if we should auto-start onboarding
   const { data: userAgents = [], isLoading: isLoadingAgents } = useGetAgentsQuery({});
@@ -56,13 +62,62 @@ function LayoutInner({ children }) {
     const timeout = setTimeout(() => {
       if (userAgents && userAgents.length === 0 && !isLoadingAgents) {
         console.log('Layout: User has no agents, enabling automatic start');
-        setEnableAutomaticStart(true);
+        //setEnableAutomaticStart(true);
       }
     }, 3000); // 3000ms delay
 
     // Cleanup the timeout if dependencies change before it fires
     return () => clearTimeout(timeout);
   }, [userAgents, isLoadingAgents]);
+
+  React.useEffect(() => {
+    if (user?.onboardingCurrentTour === 'autonomous-engineer-setup' && userAgents && userAgents.length > 0) {
+      // start the tour of first-trace-tracing-evaluation
+      window.dispatchEvent(new CustomEvent('onboarding:start-tour', {
+        detail: { tourId: 'first-trace-tracing-evaluation' }
+      }));
+    }
+  }, [user, userAgents]);
+
+  // Check for optimizations and trigger celebration tour
+  React.useEffect(() => {
+    const checkOptimizations = async () => {
+      if (!user || isCheckingOptimizations || hasCheckedOptimizations.current) return;
+      
+      hasCheckedOptimizations.current = true;
+      setIsCheckingOptimizations(true);
+      try {
+        const optimizationStatus = await userService.checkOptimizations();
+        setHasOptimizations(optimizationStatus.hasOptimizations);
+        setOptimizationPRs(optimizationStatus.optimizationPRs || []);
+        setOptimizedModels(optimizationStatus.optimizedModels || []);
+        setHasOptimizationPRs(optimizationStatus.hasOptimizationPRs || false);
+        
+        // If user has optimizations and has completed walkthrough, trigger celebration tour
+        if (optimizationStatus.hasOptimizations && user?.onboardingCurrentTour === 'first-trace-tracing-evaluation') {
+          window.dispatchEvent(new CustomEvent('onboarding:start-tour', {
+            detail: { 
+              tourId: 'first-optimization-celebration',
+              optimizationPRs: optimizationStatus.optimizationPRs || [],
+              optimizedModels: optimizationStatus.optimizedModels || [],
+              hasOptimizationPRs: optimizationStatus.hasOptimizationPRs || false
+            }
+          }));
+        }
+      } catch (error) {
+        console.error('Error checking optimizations:', error);
+        hasCheckedOptimizations.current = false; // Reset on error so we can retry
+      } finally {
+        setIsCheckingOptimizations(false);
+      }
+    };
+
+    // Check optimizations when user data is available
+    if (user) {
+      checkOptimizations();
+    }
+  }, [user]);
+
   // Convert to generic onboarding parameters
   const [enableAutomaticStart, setEnableAutomaticStart] = React.useState(false); // Enable auto-start only if user has no agents
 
