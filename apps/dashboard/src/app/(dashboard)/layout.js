@@ -71,6 +71,15 @@ function LayoutInner({ children }) {
   }, [userAgents, isLoadingAgents]);
 
   React.useEffect(() => {
+    if (user && user?.onboardingCurrentTour === null) {
+      // start the tour of first-optimization-celebration
+      window.dispatchEvent(new CustomEvent('onboarding:start-tour', {
+        detail: { tourId: 'welcome-concept-walkthrough' }
+      }));
+    }
+  }, [user]);
+
+  React.useEffect(() => {
     if (user?.onboardingCurrentTour === 'autonomous-engineer-setup' && userAgents && userAgents.length > 0) {
       // start the tour of first-trace-tracing-evaluation
       window.dispatchEvent(new CustomEvent('onboarding:start-tour', {
