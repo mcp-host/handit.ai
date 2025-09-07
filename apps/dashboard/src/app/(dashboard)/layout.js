@@ -184,6 +184,7 @@ function LayoutInner({ children }) {
         userState={{
           onboardingCurrentTour: user?.onboardingCurrentTour || null,
           userId: user?.id,
+          companyId: user?.companyId,
           email: user?.email,
           firstName: user?.firstName,
           lastName: user?.lastName

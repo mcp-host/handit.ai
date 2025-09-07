@@ -1299,6 +1299,8 @@ const OnboardingOrchestrator = ({
               // Open GitHub installation URL in new window
               const companyId = userState.companyId || 'default';
               const githubUrl = action.url.replace('${companyId}', companyId);
+              
+              console.log('Opening GitHub URL:', githubUrl, 'with companyId:', companyId);
               window.open(githubUrl, '_blank', 'noopener,noreferrer');
               
               // Track analytics
