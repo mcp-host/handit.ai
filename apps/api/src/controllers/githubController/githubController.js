@@ -373,6 +373,8 @@ export const handleGitHubCallback = async (req, res) => {
 
         companyId = company.id;
       }
+    } else {
+      companyId = slug;
     }
     const company = await Company.findByPk(parseInt(companyId)); 
     if (!company) {
