@@ -61,18 +61,20 @@ export function CustomSignOut() {
         return;
       }
 
-      // Refresh the auth state
-      //await checkSession?.();
+      // Clear any onboarding state
+      localStorage.removeItem('onboardingState');
+      sessionStorage.clear();
 
-      router.push(paths.auth.custom.signIn);
+      // Force redirect to sign-in page
+      window.location.href = paths.auth.custom.signIn;
 
     } catch (err) {
       logger.error('Sign out error', err);
       toast.error('Something went wrong, unable to sign out');
       // Even if sign out fails, redirect to sign-in page
-      router.push(paths.auth.custom.signIn);
+      window.location.href = paths.auth.custom.signIn;
     }
-  }, [checkSession, router]);
+  }, []);
 
   return (
     <MenuItem component="div" onClick={handleSignOut} sx={{ justifyContent: 'center' }}>

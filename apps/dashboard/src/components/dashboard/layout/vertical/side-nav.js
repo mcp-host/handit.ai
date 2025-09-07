@@ -70,20 +70,20 @@ export function SideNav({ color = 'evident', items = [], open, setOpen, forceOpe
         return;
       }
 
-      // Refresh the auth state
-      await checkSession?.();
+      // Clear any onboarding state
+      localStorage.removeItem('onboardingState');
+      sessionStorage.clear();
 
-      // Refresh the router and redirect to sign-in
-      router.refresh();
-      router.push('/auth/custom/sign-in');
+      // Force redirect to sign-in page
+      window.location.href = '/auth/custom/sign-in';
 
     } catch (err) {
       console.error('Sign out error', err);
       toast.error('Something went wrong, unable to sign out');
       // Even if sign out fails, redirect to sign-in page
-      router.push('/auth/custom/sign-in');
+      window.location.href = '/auth/custom/sign-in';
     }
-  }, [checkSession, router]);
+  }, []);
   
   // Force open during onboarding or use normal open state
   const isOpen = forceOpen || open;
