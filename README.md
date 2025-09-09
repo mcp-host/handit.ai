@@ -1,16 +1,43 @@
 
-# handit.ai
+<p align="center">
+  <!-- shows in LIGHT mode only -->
+  <img src="./apps/dashboard/public/assets/overview/handit-small-3.png#gh-light-mode-only" width="400" style="object-fit: cover; object-position: center;" alt="Handit logo" />
+  <!-- shows in DARK mode only -->
+  <img src="./apps/dashboard/public/assets/overview/handit-small-1.png#gh-dark-mode-only" width="400" style="object-fit: cover; object-position: center;" alt="Handit logo (dark)" />
+</p>
 
-[![npm version](https://img.shields.io/npm/v/@handit.ai/handit-ai.svg)](https://www.npmjs.com/package/@handit.ai/handit-ai)
-[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/handit-ai/autonom.svg)](https://github.com/handit-ai/autonom)
-[![Twitter Follow](https://img.shields.io/twitter/follow/handit_ai?style=social)](https://twitter.com/handit_ai)
+<p align="center">
+  <strong>🔥 The Autonomous Engineer That Fixes Your AI 24/7 🔥</strong>
+</p>
 
-🔥 **The Autonomous Engineer That Fixes Your AI 24/7** 🔥
+<p align="center">
+  Handit catches failures, writes fixes, tests them, and ships PRs, automatically. Like having an on-call engineer dedicated to your AI, except it works 24/7.
+</p>
 
-Handit catches failures, writes fixes, tests them, and ships PRs, automatically. Like having an on-call engineer dedicated to your AI, except it works 24/7.
+<p align="center">
+  <a href="https://www.npmjs.com/package/@handit.ai/node">
+    <img src="https://img.shields.io/npm/v/@handit.ai/node?style=flat&logo=npm&logoColor=white&color=CB3837&labelColor=000000" alt="npm version">
+  </a>
+  <a href="https://pypi.org/project/handit-sdk/">
+    <img src="https://img.shields.io/pypi/v/handit-sdk?style=flat&logo=pypi&logoColor=white&color=3776AB&labelColor=000000" alt="pypi version">
+  </a>
+  <a href="https://github.com/handit-ai/handit.ai/blob/main/LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-green?style=flat&logo=opensourceinitiative&logoColor=white&labelColor=000000" alt="license">
+  </a>
+  <a href="https://github.com/handit-ai/handit.ai">
+    <img src="https://img.shields.io/github/stars/handit-ai/handit.ai?style=flat&logo=github&logoColor=white&color=yellow&labelColor=000000" alt="GitHub stars">
+  </a>
+  <a href="https://discord.com/invite/XCVWYCFen6" target="_blank">
+    <img src="https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=flat&logo=discord&logoColor=white&labelColor=000000" alt="Discord">
+  </a>
+</p>
 
-[💡 **Quick Start**](#-quick-start) • [📋 **How It Works**](#-how-it-works) • [📚 **Documentation**](https://docs.handit.ai) • [💬 **Discord**](https://discord.gg/handit-ai)
+<p align="center">
+  <a href="https://docs.handit.ai/quickstart">🚀 Quick Start</a> •
+  <a href="https://docs.handit.ai/">📋 Core Features</a> •
+  <a href="https://docs.handit.ai/">📚 Docs</a> •
+  <a href="https://calendly.com/cristhian-handit/30min">📅 Schedule a Call</a>
+</p>
 
 ---
 
