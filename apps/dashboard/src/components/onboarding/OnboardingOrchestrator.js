@@ -2272,6 +2272,13 @@ const StepModal = ({ step, onNext, onPrevious, onSkip, onFormSubmit, formValues,
                       required={field.required}
                       value={formValues[field.name] || ''}
                       onChange={(e) => onFormChange(field.name, e.target.value)}
+                      autoComplete="off"
+                      inputProps={{
+                        autoComplete: "off",
+                        autoCorrect: "off",
+                        autoCapitalize: "off",
+                        spellCheck: "false"
+                      }}
                       sx={{
                         mb: 2,
                         '& .MuiOutlinedInput-root': {
@@ -3217,6 +3224,13 @@ const RepositorySearch = ({ field, value, onChange }) => {
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         onFocus={() => setOpen(true)}
+        autoComplete="off"
+        inputProps={{
+          autoComplete: "off",
+          autoCorrect: "off",
+          autoCapitalize: "off",
+          spellCheck: "false"
+        }}
         sx={{
           '& .MuiOutlinedInput-root': {
             bgcolor: 'rgba(255, 255, 255, 0.05)',
@@ -3512,6 +3526,13 @@ const FileSearch = ({ field, value, onChange, dependentValue, formValues }) => {
         onChange={(e) => setSearchTerm(e.target.value)}
         onFocus={() => dependentValue && setOpen(true)}
         disabled={!dependentValue}
+        autoComplete="off"
+        inputProps={{
+          autoComplete: "off",
+          autoCorrect: "off",
+          autoCapitalize: "off",
+          spellCheck: "false"
+        }}
         sx={{
           '& .MuiOutlinedInput-root': {
             bgcolor: 'rgba(255, 255, 255, 0.05)',
@@ -3781,6 +3802,13 @@ const BranchSearch = ({ field, value, onChange, dependentValue }) => {
         onChange={(e) => setSearchTerm(e.target.value)}
         onFocus={() => dependentValue && setOpen(true)}
         disabled={!dependentValue}
+        autoComplete="off"
+        inputProps={{
+          autoComplete: "off",
+          autoCorrect: "off",
+          autoCapitalize: "off",
+          spellCheck: "false"
+        }}
         sx={{
           '& .MuiOutlinedInput-root': {
             bgcolor: 'rgba(255, 255, 255, 0.05)',

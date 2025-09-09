@@ -1,620 +1,104 @@
 
-<p align="center">
-  <!-- shows in LIGHT mode only -->
-  <img src="./apps/dashboard/public/assets/overview/handit-small-3.png#gh-light-mode-only" width="400" style="object-fit: cover; object-position: center;" alt="Handit logo" />
-  <!-- shows in DARK mode only -->
-  <img src="./apps/dashboard/public/assets/overview/handit-small-1.png#gh-dark-mode-only" width="400" style="object-fit: cover; object-position: center;" alt="Handit logo (dark)" />
-</p>
+# handit.ai
 
-<p align="center">
-  <strong>🔥 The Open Source Engine that Auto-Improves Your AI 🔥</strong>
-</p>
+[![npm version](https://img.shields.io/npm/v/@handit.ai/handit-ai.svg)](https://www.npmjs.com/package/@handit.ai/handit-ai)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/handit-ai/autonom.svg)](https://github.com/handit-ai/autonom)
+[![Twitter Follow](https://img.shields.io/twitter/follow/handit_ai?style=social)](https://twitter.com/handit_ai)
 
-<p align="center">
-  <a href="https://www.npmjs.com/package/@handit.ai/node">
-    <img src="https://img.shields.io/npm/v/@handit.ai/node?style=flat&logo=npm&logoColor=white&color=CB3837&labelColor=000000" alt="npm version">
-  </a>
-  <a href="https://pypi.org/project/handit-sdk/">
-    <img src="https://img.shields.io/pypi/v/handit-sdk?style=flat&logo=pypi&logoColor=white&color=3776AB&labelColor=000000" alt="pypi version">
-  </a>
-  <a href="https://github.com/handit-ai/handit.ai/blob/main/LICENSE">
-    <img src="https://img.shields.io/badge/license-MIT-green?style=flat&logo=opensourceinitiative&logoColor=white&labelColor=000000" alt="license">
-  </a>
-  <a href="https://github.com/handit-ai/handit.ai">
-    <img src="https://img.shields.io/github/stars/handit-ai/handit.ai?style=flat&logo=github&logoColor=white&color=yellow&labelColor=000000" alt="GitHub stars">
-  </a>
-  <!-- TODO: Add Twitter handle when available -->
-      <a href="https://discord.com/invite/XCVWYCFen6" target="_blank">
-      <img src="https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=flat&logo=discord&logoColor=white&labelColor=000000" alt="Discord">
-  </a>
-</p>
+🔥 **The Autonomous Engineer That Fixes Your AI 24/7** 🔥
 
-<p align="center">
-  <a href="https://docs.handit.ai/quickstart">🚀 Quick Start</a> •
-  <a href="https://docs.handit.ai/">📋 Core Features</a> •
-  <a href="https://docs.handit.ai/">📚 Docs</a> •
-  <a href="https://calendly.com/cristhian-handit/30min">📅 Schedule a Call</a>
-</p>
+Handit catches failures, writes fixes, tests them, and ships PRs, automatically. Like having an on-call engineer dedicated to your AI, except it works 24/7.
+
+[💡 **Quick Start**](#-quick-start) • [📋 **How It Works**](#-how-it-works) • [📚 **Documentation**](https://docs.handit.ai) • [💬 **Discord**](https://discord.gg/handit-ai)
 
 ---
 
-## 🎯 What is Handit?
+## 🎯 What is handit.ai?
 
-Handit evaluates every agent decision, auto-generates better prompts and datasets, A/B-tests the fix, and lets you control what goes live.
+**handit.ai solves AI reliability.**
 
-This isn't another wrapper.  
-This is the auto-improvement engine your agents have been missing.
+Modern AI applications are fragile – they hallucinate, break schemas, leak PII, and fail silently. When your AI fails at 2am, customers complain, and you're debugging blind. Did the model change? Is a tool broken? Is there a logic error? Without visibility, you're playing whack-a-mole with quality issues.
 
-![Handit automatically improves AI agents through evaluation and optimization](./apps/dashboard/public/assets/videos/ci-cd-hq.gif)
+**handit.ai is your autonomous engineer** that monitors your AI 24/7, detects issues, generates fixes, tests them against real data, and ships them as pull requests—all automatically.
 
-### 🧱 The Auto-Improvement Philosophy
+Write JavaScript, TypeScript, Python, and more. What used to take manual debugging and firefighting now happens automatically with handit.ai.
 
-- **👁️ Complete Observability**: Track every step of your AI agents with comprehensive tracing. Monitor LLM calls, tool usage, execution timelines, and performance metrics in real-time across your entire agent workflow.
-- **🔍 Evaluate Everything**: Automatically assess every agent decision—inputs, outputs, tool calls, and adherence to instructions—across every node. Detect issues, hallucinations, and performance gaps in real-time.
-- **🤖 Auto-Generate Improvements**: Automatically get better prompts, based on detected issues. Let AI improve your AI with targeted fixes for specific failure patterns.
-- **🧪 A/B Test Automatically**: Test improvements against your current setup with intelligent A/B testing. Compare performance, measure impact, and validate fixes before they go live.
-- **🎛️ Control What Goes Live**: You decide what improvements to deploy. Review auto-generated fixes, approve changes, and roll back if needed. Full control over your agent's evolution.
-- **✍️ Version Everything**: Track every change, improvement, and rollback. Complete version control for prompts, datasets, and configurations—by node, model, or project.
+![handit.ai autonomous engineer workflow](https://handit.ai/assets/workflow-diagram.png)
 
 ---
 
-## 🚧 The Problem
-
-AI agents in production suffer from **performance degradation**, **undetected failures**, and **manual optimization overhead**. Teams struggle with fragmented monitoring, manual prompt engineering, and lack of self improvement processes.
-
-When you implement AI in critical business processes, you quickly realize you need to **understand what's happening with your AI** and ensure it **improves continuously**. But here's the challenge:
-
-**Most teams don't see the problem until it's too late.** They're still early in their AI adoption curve, and by the time performance issues hit, they've already:
-
-- ✋ Lost 6+ months troubleshooting mysterious failures
-- 🔥 Shut down AI projects due to unpredictable behavior  
-- 📉 Experienced performance degradation without knowing why
-
-Instead of waiting for problems to surface, teams need a system that continuously monitors, evaluates, and optimizes their AI—**before** issues become critical.
-
 ---
 
-## ✅ The Auto-Improvement System
+## 🚀 Quick Start
 
-Handit unifies your entire AI improvement pipeline into a **unified platform**. Monitoring, evaluation, optimization, and prompt management.
+Get your autonomous engineer up and running in under 5 minutes:
 
-| **Before**                     | **After (Handit)**                      |
-| ------------------------------ | --------------------------------------- |
-| Manual performance monitoring  | **Automatic evaluation & insights**     |
-| Fragmented optimization tools  | **End-to-end improvement pipeline**     |
-| Manual prompt engineering     | **Auto-generated optimizations**        |
-| No systematic A/B testing     | **Intelligent A/B testing**             |
-| Performance degradation       | **Continuous Self-Improving AI**         |
-
----
-
-## 🔧 Supported Features
-
-| Feature                    | Status        | Use Case                                    |
-| -------------------------- | ------------- | ------------------------------------------- |
-| **Real-Time Monitoring**   | ✅ Available  | Track agent performance and detect issues   |
-| **Evaluation Hub**         | ✅ Available  | Run evaluations             |
-| **Prompt Management**      | ✅ Available  | Version control and A/B test prompts       |
-| **Self-Improving AI**      | ✅ Available  | AI-generated improvements                   |
-| **Token Usage Analytics**   | 🔄 Coming Soon| Monitor token consumption patterns |
-| **Complete Cost Tracing**  | 🔄 Coming Soon| Monitor all costs of your LLMs             |
-
----
-
-### 🤔 How it Works
-
-Handit's architecture follows a proven 3-phase approach that transforms any AI system into a self-improving platform:
-
-**Phase 1: Complete Observability**
-- **Comprehensive Tracing**: Track every LLM call, tool usage, and execution step with detailed timing and error tracking
-- **Real-Time Monitoring**: Instantly visualize all agent operations, inputs, outputs, and performance metrics
-
-**Phase 2: Continuous Evaluation**  
-- **LLM-as-Judge**: Automated quality assessment using custom evaluators across multiple dimensions (accuracy, completeness, coherence)
-- **Quality Insights**: Real-time evaluation scores and trends to identify improvement opportunities
-
-**Phase 3: Self-Improving AI**
-- **Automatic Optimization**: AI generates better prompts based on evaluation data and performance patterns
-- **Background A/B Testing**: Improvements are tested automatically with statistical confidence before deployment  
-- **Release Hub**: Review, compare, and deploy optimized prompts with full control and easy rollback
-
-This model means you no longer need to manually monitor, debug, and optimize your AI agents.
-
-## ⚡ Core Features
-
-The following features are deeply integrated to help you build continuously improving AI systems:
-
-### 🔑 Real-Time Monitoring
-Continuously ingest logs from every model, prompt, and agent in your stack. Instantly visualize performance trends, detect anomalies, and set custom alerts for drift or failures—live.
-
-**Ready to monitor your AI?** → [Observability Dashboard](https://dashboard.handit.ai/ag-tracing)
-
-### 📣 Evaluation Hub  
-Run evaluation pipelines on production traffic with custom LLM-as-Judge prompts, business KPI thresholds (accuracy, latency, etc.), and get automated quality scores in real time. Results feed directly into your optimization workflows—no manual grading required.
-
-**Ready to evaluate your AI?** → [Evaluation Hub](https://dashboard.handit.ai/evaluation-hub)
-
-### 🏪 Prompt Management & Optimization
-Version control your prompts while Handit automatically improves your AI through self-improving optimization. Generate better prompts, test them with intelligent A/B testing, and deploy proven improvements—all with full control over what goes live.
-
-**Ready to optimize your AI Agents?** → [Prompt Versions](https://dashboard.handit.ai/prompt-versions)
-
-### 📊 Auto-Generated Insights
-<!-- TODO: Add more detailed information about insight generation capabilities -->
-Handit automatically analyzes performance patterns and generates actionable insights for improvement.
-
-### 📡 Version Control: Complete Traceability
-Track every change, improvement, and rollback. Complete version control for prompts, datasets, and configurations—by node, model, or project.
-
-### 👁️ End-to-End Observability with Traces
-Every execution generates a full trace, capturing step timelines, model interactions, tool calls, and performance metrics. Visualize everything in the dashboard and debug faster.
-
----
-
-## 🚀 Complete Handit.ai Quickstart
-
-> **The Open Source Engine that Auto-Improves Your AI.** <br />
-> Handit evaluates every agent decision, auto-generates better prompts and datasets, A/B-tests the fix, and lets you control what goes live.
-
-**What you'll build:** A fully observable, continuously evaluated, and automatically optimizing AI system that improves itself based on real production data.
-
-### Overview: The Complete Journey
-
-Here's what we'll accomplish in three phases:
-
-1. **[Phase 1: AI Observability](#phase-1-ai-observability-5-minutes)** ⏱️ 5 minutes - Set up comprehensive tracing to see inside your AI agents
-2. **[Phase 2: Quality Evaluation](#phase-2-quality-evaluation-10-minutes)** ⏱️ 10 minutes - Add automated evaluation to continuously assess performance  
-3. **[Phase 3: Self-Improving AI](#phase-3-self-improving-ai-15-minutes)** ⏱️ 15 minutes - Enable automatic optimization with proven improvements
-
-**The Result**: Complete visibility into performance with automated optimization recommendations based on real production data.
-
-### Prerequisites
-
-- A [Handit.ai Account](https://dashboard.handit.ai/auth/custom/sign-in) (sign up if needed)
-- 15-30 minutes to complete the setup
-
----
-
-## Phase 1: AI Observability
-
-Let's add comprehensive tracing to see exactly what your AI is doing.
-
-### Python Example 
-
-### Step 1: Install the SDK
+### 1. Install the handit CLI
 
 ```bash
-# Python
-pip install -U "handit-sdk>=1.16.0"
-
-# JavaScript
-npm install @handit.ai/node
+npm install -g @handit.ai/cli
 ```
 
-### Step 2: Get Your Integration Token
+### 2. Start the Setup Process
 
-1. Log into your [Handit.ai Dashboard](https://beta.handit.ai)
-2. Go to **Settings** → **Integrations**
-3. Copy your integration token
+Navigate to your AI project directory and run:
 
-![Handit token](./apps/dashboard/public/assets/videos/integration_token_hq.gif)
-
-### Step 3: Add Basic Tracing
-
-Set up your main agent function with four key components:
-
-1. **Initialize Handit.ai service**
-2. **Set up start tracing**
-3. **Track LLM calls and tools in your workflow**
-4. **Set up end tracing**
-
-#### Python Example
-
-Create a `handit_service.py` file:
-
-```python
-"""
-Handit.ai service initialization and configuration.
-"""
-import os
-from dotenv import load_dotenv
-from handit import HanditTracker
-
-load_dotenv()
-
-# Create a singleton tracker instance
-tracker = HanditTracker()
-tracker.config(api_key=os.getenv("HANDIT_API_KEY"))
+```bash
+handit-cli setup
 ```
 
-Main agent with comprehensive tracing:
+The CLI will guide you through connecting your autonomous engineer:
 
-```python
-"""
-Customer service agent with Handit.ai tracing.
-"""
-from handit_service import tracker
-from langchain.chat_models import ChatOpenAI
+- 🔧 **Connect your handit.ai account**
+- 📱 **Install the handit SDK** in your project
+- 🔑 **Configure your API key** for monitoring
+- 🧠 **Connect evaluation models** (OpenAI, Together AI, etc.)
+- 🔗 **Connect your GitHub repository** for automated PRs
 
-class CustomerServiceAgent:
-    def __init__(self):
-        self.llm = ChatOpenAI(model="gpt-4")
+### 3. Verify Your Setup
 
-    async def generate_response(self, user_message: str, context: dict, execution_id: str) -> str:
-        """Generate response using LLM with context."""
-        context_text = "\n".join([doc["content"] for doc in context["similar_documents"]])
-        system_prompt = f"You are a helpful customer service agent. Use the provided context.\n\nContext: {context_text}"
-        
-        response = await self.llm.agenerate([system_prompt + "\n\nUser Question: " + user_message])
-        generated_text = response.generations[0][0].text
-        
-        # Track the LLM call
-        tracker.track_node(
-            input={
-                "systemPrompt": system_prompt,
-                "userPrompt": user_message,
-                "extraDetails": {
-                    "model": "gpt-4",
-                    "temperature": 0.7,
-                    "context_documents": len(context["similar_documents"])
-                }
-            },
-            output=generated_text,
-            node_name="response_generator",
-            agent_name="customer_service_agent",
-            node_type="llm",
-            execution_id=execution_id
-        )
-        
-        return generated_text
+✅ **Check your dashboard**: Go to [dashboard.handit.ai](https://dashboard.handit.ai) - you should see:
+- Tracing data flowing in real-time
+- Quality scores for evaluated interactions
+- Agent Performance showing baseline metrics
 
-    async def get_context_from_vector_db(self, query: str, execution_id: str) -> dict:
-        """Tool function to extract context from vector database."""
-        # Simulate semantic search results
-        results = {
-            "query": query,
-            "similar_documents": [
-                {
-                    "content": "Our AI platform offers automated evaluation, optimization, and real-time monitoring.",
-                    "similarity_score": 0.94,
-                    "document_id": "features_001"
-                }
-            ]
-        }
-        
-        # Track the tool usage
-        tracker.track_node(
-            input={
-                "toolName": "get_context_from_vector_db",
-                "parameters": {"query": query, "top_k": 2},
-                "extraDetails": {"vector_db": "chroma", "collection": "company_knowledge"}
-            },
-            output=results,
-            node_name="vector_context_retriever",
-            agent_name="customer_service_agent",
-            node_type="tool",
-            execution_id=execution_id
-        )
-        
-        return results
+✅ **Confirm GitHub integration**: Check your repository - you should see:
+- handit app installed in repository settings
+- Ready for PRs - your autonomous engineer can now create pull requests
 
-    async def process_customer_request(self, user_message: str, execution_id: str) -> dict:
-        """Process customer request with full tracing."""
-        context = await self.get_context_from_vector_db(user_message, execution_id)
-        response = await self.generate_response(user_message, context, execution_id)
-        return {"response": response}
-
-# Usage example
-async def main():
-    agent = CustomerServiceAgent()
-    
-    # Start tracing
-    tracing_response = tracker.start_tracing(agent_name="customer_service_agent")
-    execution_id = tracing_response.get("executionId")
-    
-    try:
-        result = await agent.process_customer_request(
-            "What AI features does your platform offer?", execution_id
-        )
-        print(f"Response: {result['response']}")
-    finally:
-        # End tracing
-        tracker.end_tracing(execution_id=execution_id, agent_name="customer_service_agent")
-```
-
-### JavaScript Example
-
-```javascript
-/**
- * Customer service agent with Handit.ai tracing.
- */
-import { config, startTracing, trackNode, endTracing } from '@handit.ai/node';
-import { ChatOpenAI } from 'langchain/chat_models';
-
-// Configure Handit.ai
-config({ apiKey: process.env.HANDIT_API_KEY });
-
-class CustomerServiceAgent {
-    constructor() {
-        this.llm = new ChatOpenAI({ model: 'gpt-4' });
-    }
-
-    async generateResponse(userMessage, context, executionId) {
-        const contextText = context.similarDocuments.map(doc => doc.content).join('\n');
-        const systemPrompt = `You are a helpful customer service agent. Use the provided context.\n\nContext: ${contextText}`;
-        
-        const response = await this.llm.generate([systemPrompt + `\n\nUser Question: ${userMessage}`]);
-        const generatedText = response.generations[0][0].text;
-        
-        // Track the LLM call
-        await trackNode({
-            input: {
-                systemPrompt,
-                userPrompt: userMessage,
-                extraDetails: {
-                    model: "gpt-4",
-                    temperature: 0.7,
-                    context_documents: context.similarDocuments.length
-                }
-            },
-            output: generatedText,
-            nodeName: 'response_generator',
-            agentName: 'customer_service_agent',
-            nodeType: 'llm',
-            executionId
-        });
-        
-        return generatedText;
-    }
-
-    async getContextFromVectorDb(query, executionId) {
-        // Simulate semantic search
-        const results = {
-            query,
-            similarDocuments: [{
-                content: "Our AI platform offers automated evaluation, optimization, and real-time monitoring.",
-                similarityScore: 0.94,
-                documentId: "features_001"
-            }]
-        };
-        
-        // Track the tool usage
-        await trackNode({
-            input: {
-                toolName: "get_context_from_vector_db",
-                parameters: { query, top_k: 2 },
-                extraDetails: { vector_db: "chroma", collection: "company_knowledge" }
-            },
-            output: results,
-            nodeName: 'vector_context_retriever',
-            agentName: 'customer_service_agent',
-            nodeType: 'tool',
-            executionId
-        });
-        
-        return results;
-    }
-
-    async processCustomerRequest(userMessage, executionId) {
-        const context = await this.getContextFromVectorDb(userMessage, executionId);
-        const response = await this.generateResponse(userMessage, context, executionId);
-        return { response };
-    }
-}
-
-// Usage example
-async function main() {
-    const agent = new CustomerServiceAgent();
-    
-    // Start tracing
-    const tracingResponse = await startTracing({ agentName: 'customer_service_agent' });
-    const executionId = tracingResponse.executionId;
-    
-    try {
-        const result = await agent.processCustomerRequest(
-            "What AI features does your platform offer?", executionId
-        );
-        console.log('Response:', result.response);
-    } finally {
-        // End tracing
-        await endTracing({ executionId, agentName: 'customer_service_agent' });
-    }
-}
-```
-
-**🎉 Phase 1 Complete!** You now have full observability with every operation, timing, input, output, and error visible in your dashboard.
+**That's it!** Your autonomous engineer is now monitoring your AI, evaluating quality, and ready to create pull requests with fixes whenever issues are detected.
 
 ---
 
-## Phase 2: Quality Evaluation
+## 🎯 How It Works
 
-Add automated evaluation to continuously assess quality across multiple dimensions.
+### 🔍 **Detect** - Real-Time Failure Detection
+**On-Call 24/7**: Monitors every request, catches failures in real-time before customers complain.
 
-### Step 1: Connect Evaluation Models
+- Hallucinations and incorrect responses
+- Schema breaks and validation errors  
+- PII leaks and security issues
+- Performance degradation and timeouts
 
-1. Go to **Settings** → **Model Tokens**
-2. Add your OpenAI or other model credentials
-3. These models will act as "judges" to evaluate responses
+### 🧠 **Diagnose & Fix** - Automated Fix Generation
+**Insights**: Analyzes root causes, generates fixes and tests solutions on actual failure cases in production.
 
-![Evaluations](./apps/dashboard/public/assets/videos/model_token_hq.gif)
+- Prompt improvements and optimizations
+- Configuration changes and guardrails
+- Code fixes for logic errors
+- Model parameter adjustments
 
-### Step 2: Create Focused Evaluators
+### 📝 **Ship** - GitHub-Native Deployment
+**Opens PRs with proven fixes**: You review and merge, or auto-deploy with guardrails.
 
-Create separate evaluators for each quality aspect in **Evaluation** → **Evaluation Suite**:
-
-**Example Evaluator 1: Response Completeness**
-```
-You are evaluating whether an AI response completely addresses the user's question.
-
-Focus ONLY on completeness - ignore other quality aspects.
-
-User Question: {input}
-AI Response: {output}
-
-Rate on a scale of 1-10:
-1-2 = Missing major parts of the question
-3-4 = Addresses some parts but incomplete
-5-6 = Addresses most parts adequately  
-7-8 = Addresses all parts well
-9-10 = Thoroughly addresses every aspect
-
-Output format:
-Score: [1-10]
-Reasoning: [Brief explanation]
-```
-
-**Example Evaluator 2: Accuracy Check**
-```
-You are checking if an AI response contains accurate information.
-
-Focus ONLY on factual accuracy - ignore other aspects.
-
-User Question: {input}
-AI Response: {output}
-
-Rate on a scale of 1-10:
-1-2 = Contains obvious false information
-3-4 = Contains questionable claims
-5-6 = Mostly accurate with minor concerns
-7-8 = Accurate information
-9-10 = Completely accurate and verifiable
-
-Output format:
-Score: [1-10]
-Reasoning: [Brief explanation]
-```
-
-![Handit automatically improves AI agents through evaluation and optimization](./apps/dashboard/public/assets/videos/evaluator_creation_hq.gif)
-
-### Step 3: Associate Evaluators to Your LLM Nodes
-
-1. Go to **Agent Performance**
-2. Select your LLM node (e.g., "response-generator")
-3. Click **Manage Evaluators**
-4. Add your evaluators
-
-![Handit automatically improves AI agents through evaluation and optimization](./apps/dashboard/public/assets/videos/associate_evaluator_hq.gif)
-
-### Step 4: Monitor Results
-
-View real-time evaluation results in:
-- **Tracing** tab: Individual evaluation scores
-- **Agent Performance**: Quality trends over time
-
-![Handit automatically improves AI agents through evaluation and optimization](./apps/dashboard/public/assets/overview/metrics.png)
-
-**🎉 Phase 2 Complete!** Continuous evaluation is now running across multiple quality dimensions with real-time insights.
+- Tested fixes with real performance data
+- Detailed explanations of changes
+- A/B testing results and metrics
+- Rollback capabilities
 
 ---
 
-## Phase 3: Self-Improving AI
-
-Enable automatic optimization that generates better prompts and provides proven improvements.
-
-### Step 1: Connect Optimization Models
-
-1. Go to **Settings** → **Model Tokens**
-2. Select optimization model tokens
-3. Self-improving AI automatically activates once configured
-
-![Handit automatically improves AI agents through evaluation and optimization](./apps/dashboard/public/assets/videos/model_token_hq.gif)
-
-> **Automatic Activation**: Once optimization tokens are configured, the system automatically begins analyzing evaluation data and generating optimizations.
-
-### Step 2: Monitor Optimization Results
-
-The system is now automatically generating and testing improved prompts. Monitor results in two places:
-
-**Agent Performance Dashboard**: 
-
-- View agent performance metrics
-- Compare current vs optimized versions
-- See improvement percentages
-
-![Handit automatically improves AI agents through evaluation and optimization](./apps/dashboard/public/assets/overview/metrics.png)
-
-**Release Hub**:
-
-- Go to Optimization → Release Hub
-- View detailed prompt comparisons
-- See statistical confidence and recommendations
-
-![Handit automatically improves AI agents through evaluation and optimization](./apps/dashboard/public/assets/overview/prompt-comparison.png)
-
-### Step 3: Deploy Optimizations
-
-1. **Review Recommendations** in Release Hub
-2. **Compare Performance** between current and optimized prompts
-3. **Mark as Production** for prompts you want to deploy
-4. **Fetch via SDK** in your application
-
-![Handit automatically improves AI agents through evaluation and optimization](./apps/dashboard/public/assets/videos/ci-cd-hq.gif)
-
-**Fetch Optimized Prompts:**
-
-```python
-# Python
-from handit import HanditTracker
-
-tracker = HanditTracker(api_key="your-api-key")
-optimized_prompt = tracker.fetch_optimized_prompt(model_id="response-generator")
-
-# Use in your LLM calls
-response = your_llm_client.chat.completions.create(
-    model="gpt-4",
-    messages=[
-        {"role": "system", "content": optimized_prompt},
-        {"role": "user", "content": user_query}
-    ]
-)
-```
-
-```javascript
-// JavaScript
-import { HanditClient } from '@handit/sdk';
-
-const handit = new HanditClient({ apiKey: 'your-api-key' });
-const optimizedPrompt = await handit.fetchOptimizedPrompt({ modelId: 'response-generator' });
-
-// Use in your LLM calls
-const response = await openai.chat.completions.create({
-    model: 'gpt-4',
-    messages: [
-        { role: 'system', content: optimizedPrompt },
-        { role: 'user', content: userQuery }
-    ]
-});
-```
-
-**🎉 Phase 3 Complete!** You now have a self-improving AI that automatically detects quality issues, generates better prompts, tests them, and provides proven improvements.
-
----
-
-### What You've Accomplished
-
-🎉 **Congratulations!** You now have a complete AI observability and optimization system:
-
-- ✅ **Full Observability**: Complete visibility into operations with real-time monitoring
-- ✅ **Continuous Evaluation**: Automated quality assessment across multiple dimensions  
-- ✅ **Self-Improving AI**: Automatic optimization with AI-generated improvements and A/B testing
-
-### Troubleshooting
-
-**Tracing Not Working?**
-- Verify your API key is correct and set as environment variable
-- Ensure you're using the correct function parameters
-
-**Evaluations Not Running?**
-- Confirm model tokens are valid and have sufficient credits
-- Verify LLM nodes are receiving traffic
-
-**Optimizations Not Generating?**
-- Ensure evaluation data shows quality issues (scores below threshold)
-- Verify optimization model tokens are configured
-
-**Need Help?** Join our [Discord community](https://discord.gg/wZbW9Bu5) or check [GitHub Issues](https://github.com/Handit-AI/handit.ai-docs/issues)
-
----
 ## 🎯 Examples
 
 ### 🏆 **[Unstructured to Structured](https://github.com/Handit-AI/handit-examples/tree/main/examples/unstructured-to-structured)**
@@ -652,6 +136,189 @@ Write your AI agents in your preferred language:
 | **LangChain & LangGraph** | ✅ Available | Python/JS SDK |
 | **LlamaIndex, AutoGen** | ✅ Available | Python/JS SDK + HTTP API |
 | **CrewAI, Swarm** | ✅ Available | Python SDK + HTTP API |
+
+---
+
+## 🎯 Real Results
+
+See how teams eliminated their AI firefighting with handit.ai:
+
+### **Aspe.ai**
+ASPE.ai was running a high-stakes agent that was silently failing every time. Within 48 hours of connecting handit, the system identified the issue, tested fixes, and deployed the new prompts.
+
+- **+62.3%** Accuracy improvement
+- **+36%** Response relevance  
+- **+97.8%** Success rate
+
+### **XBuild**
+XBuild's AI was suffering from prompt drift that tanked performance across key models. handit stepped in, ran automatic A/B tests, and deployed the top-performing versions.
+
+- **+34.6%** Accuracy improvement
+- **+19.1%** Success rate
+- **+6600** Automatic evaluations
+
+---
+
+## ⚡ Features: Everything Your Autonomous Engineer Does
+
+Handit isn't just another tool—it's an autonomous team member handling your AI reliability 24/7.
+
+### 🔍 Real-Time Failure Detection
+**Never Miss a Failure:** Catches hallucinations, schema breaks, PII leaks, and performance issues as they happen. No more finding out from angry customers.
+
+### 🤖 Automated Fix Generation  
+**Writes Production-Ready Code:** Generates prompt improvements, config changes, and guardrails. Tests each fix against real failures before shipping.
+
+### 📊 A/B Testing & Validation
+**Data-Driven Decisions:** Every fix is tested on live data. See exact accuracy improvements, latency impacts, and success rates before deploying.
+
+### 🧠 Fix Registry & Memory
+**Gets Smarter Over Time:** Remembers every failure and successful fix. Instantly applies proven solutions to recurring issues. Your engineer's growing expertise.
+
+---
+
+## 🎯 How We Do It: Your Autonomous Engineer in Action
+
+**From failure to fix in production—fully automated, fully auditable, fully open-source.**
+
+### 🔍 Detect
+**On-Call 24/7**  
+Monitors every request, catches failures in real-time before customers complain.
+
+### 🧠 Diagnose & Fix  
+**Insights**  
+Analyzes root causes, generates fixes and tests solutions on actual failure cases in production.
+
+### 🚀 Ship
+**GitHub-Native**  
+Opens PRs with proven fixes. You review and merge, or auto-deploy with guardrails.
+
+---
+
+## 📈 Effectiveness: Real Engineers. Real Results.
+
+See how teams eliminated their AI firefighting with Handit.
+
+### 🏢 ASPE.ai
+ASPE.ai was running a high-stakes agent that was silently failing every time. Within 48 hours of connecting Handit, the system identified the issue, tested fixes, and deployed the new prompts.
+
+- **+62.3%** Accuracy
+- **+36%** Response relevance  
+- **+97.8%** Success rate
+
+### 🏢 XBuild
+XBuild's AI was suffering from prompt drift that tanked performance across key models. Handit stepped in, ran automatic A/B tests, and deployed the top-performing versions.
+
+- **+34.6%** Accuracy
+- **+19.1%** Success rate
+- **+6600** Automatic evaluations
+
+---
+
+## 🛠️ Advanced: Manual Setup
+
+**Advanced users only.** If you need custom control over your autonomous engineer setup, you can manually add monitoring code instead of using the CLI.
+
+**When to use manual setup:**
+- Custom deployment environments
+- Complex agent architectures  
+- Need granular control over monitoring
+
+**Quick manual setup:**
+- [Manual Setup Guide](https://docs.handit.ai/manual-setup) - Add decorators yourself
+- [Advanced Setup](https://docs.handit.ai/advanced-setup) - Node-by-node monitoring
+
+### Troubleshooting
+
+❌ **CLI command not found?**
+- **Solution:** Install Node.js first: `node --version` (should show v16+)
+- If still failing: `npm uninstall -g @handit.ai/cli && npm install -g @handit.ai/cli`
+
+❌ **"Authentication failed" during setup?**
+- **Solution:** Check your Handit.ai account credentials at [dashboard.handit.ai](https://dashboard.handit.ai)
+- If still failing: Try logging out and back in to your Handit account
+
+❌ **No traces appearing in dashboard?**
+- **Solution:** Run `handit-cli setup` again to regenerate configuration
+- Check: Your generated code is actually being executed (not just imported)
+- Verify: API key was set correctly: `echo $HANDIT_API_KEY`
+
+❌ **Evaluations not running?**
+- **Solution:** Re-run `handit-cli evaluators-setup` to verify model connections
+- Check: Model tokens have sufficient credits in your provider dashboard
+- Verify: Your AI is receiving traffic (evaluations only run on active agents)
+
+❌ **GitHub app installation failed?**
+- **Solution:** Ensure you have admin access to the repository
+- Try: `handit-cli github` again to reinstall the app
+- Check: Repository permissions in GitHub Settings → Applications
+
+**Need Help?**
+- **Community:** [Discord](https://discord.com/invite/XCVWYCFen6) for real-time help
+- **Support:** [Contact Us](https://calendly.com/cristhian-handit/30min) for technical issues
+- **Advanced:** [Manual Setup](https://docs.handit.ai/manual-setup) for custom configurations
+
+---
+## 🎯 Examples
+
+### 🏆 **[ChessArena.ai](https://chessarena.ai)** - Full-Featured Production App
+A complete chess platform benchmarking LLM performance with real-time evaluation.
+
+**[Live Website →](https://chessarena.ai)** | **[Source Code →](https://github.com/handit-ai/chessarena)**
+
+Built from scratch to production deployment, featuring:
+
+🔐 **Authentication & user management**  
+🤖 **Multi-agent LLM evaluation** (OpenAI, Claude, Gemini, Grok)  
+🐍 **Python engine integration** (Stockfish chess evaluation)  
+📊 **Real-time streaming** with live move updates and scoring  
+🎨 **Modern React UI** with interactive chess boards  
+🔄 **Event-driven workflows** connecting TypeScript APIs to Python processors  
+📈 **Live leaderboards** with move-by-move quality scoring  
+🚀 **Production deployment** on Handit Cloud  
+
+### 📚 More Examples
+
+| Example | Description |
+|---------|-------------|
+| **AI Research Agent** | Web research with iterative analysis |
+| **Streaming Chatbot** | Real-time AI responses |
+| **Gmail Automation** | Smart email processing |
+| **GitHub PR Manager** | Automated PR workflows |
+| **Finance Agent** | Real-time market analysis |
+
+**Features demonstrated:** Multi-language workflows • Real-time streaming • AI integration • Production deployment
+
+**[View all 20+ examples →](https://github.com/handit-ai/handit-examples)**
+
+---
+
+## 🌐 Language Support
+
+Write your AI agents in your preferred language:
+
+| Language       | Status        | SDK Package           |
+| -------------- | ------------- | --------------------- |
+| **Python**     | ✅ Stable      | [`handit-sdk>=1.16.0`](https://pypi.org/project/handit-sdk/)  |
+| **JavaScript** | ✅ Stable      | [`@handit.ai/node`](https://www.npmjs.com/package/@handit.ai/node)     |
+| **TypeScript** | ✅ Stable      | [`@handit.ai/node`](https://www.npmjs.com/package/@handit.ai/node)     |
+| **Go**         | ✅ Available | HTTP API integration          |
+| **Any Stack/Framework** | ✅ Available | HTTP API integration (n8n, Zapier, etc.) |
+| **Java, C#, Ruby, PHP** | ✅ Available | REST API integration |
+| **LangChain & LangGraph** | ✅ Available | Python/JS SDK |
+| **LlamaIndex, AutoGen** | ✅ Available | Python/JS SDK + HTTP API |
+| **CrewAI, Swarm** | ✅ Available | Python SDK + HTTP API |
+
+---
+
+## 🏆 Trusted by Teams Who Ship Production AI
+
+**Open source because you need to trust what pushes to prod.**
+
+![Trusted by Teams](./apps/dashboard/public/assets/overview/trusted-by.png)
+
+**Stop Being Your AI's On-Call Engineer**  
+Let Handit handle the 2am failures while you focus on building features. Open source. GitHub-native. Starts working in minutes!
 
 ---
 
@@ -714,8 +381,77 @@ Thanks to everyone helping bring Handit to life:
 
 ---
 
+## 🚧 Roadmap
+
+We have a public roadmap for handit.ai. You can view it [here](https://github.com/handit-ai/autonom/projects/1).
+
+Feel free to add comments to the issues, or create a new issue if you have a feature request.
+
+| Feature | Status | Link | Description |
+|---------|--------|------|-------------|
+| Advanced Prompt Optimization | Planned | [#485](https://github.com/handit-ai/autonom/issues/485) | Multi-model prompt optimization |
+| Custom Evaluation Metrics | Planned | [#495](https://github.com/handit-ai/autonom/issues/495) | User-defined evaluation criteria |
+| Real-time Dashboard | Planned | [#497](https://github.com/handit-ai/autonom/issues/497) | Live monitoring interface |
+| Auto-deployment | Planned | [#476](https://github.com/handit-ai/autonom/issues/476) | Automated deployment with guardrails |
+| Multi-agent Support | Planned | [#477](https://github.com/handit-ai/autonom/issues/477) | Complex agent orchestration |
+| Custom Integrations | Planned | [#480](https://github.com/handit-ai/autonom/issues/480) | Third-party tool integrations |
+
+---
+
+## 📚 Resources
+
+- 📖 **[Documentation](https://docs.handit.ai)** - Complete guides and API reference
+- 💬 **[Discord](https://discord.gg/handit-ai)** - Community support and discussions  
+- 🐛 **[GitHub Issues](https://github.com/handit-ai/autonom/issues)** - Bug reports and feature requests
+- 🗺️ **[Roadmap](https://github.com/handit-ai/autonom/projects/1)** - Upcoming features and progress
+- 🎥 **[Demo](https://handit.ai/demo)** - See handit in action
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Check our [Contributing Guide](CONTRIBUTING.md) to get started.
+
+### Development Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/handit-ai/autonom.git
+cd autonom
+
+# Install dependencies
+npm install
+
+# Start development environment
+npm run dev
+```
+
+---
+
 ## 📄 License
 
-MIT © 2025 – Built with 💡 by the Handit community
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🆘 Need Help?
+
+- **Community**: [Discord](https://discord.gg/handit-ai) for real-time help
+- **Support**: [Contact Us](https://handit.ai/contact) for technical issues
+- **Documentation**: [docs.handit.ai](https://docs.handit.ai) for comprehensive guides
+
+---
+
+<div align="center">
+
+**Stop Being Your AI's On-Call Engineer**
+
+Let handit.ai handle the 2am failures while you focus on building features.
+
+[**Get Started Free**](https://dashboard.handit.ai) • [**View on GitHub**](https://github.com/handit-ai/autonom) • [**Join Discord**](https://discord.gg/handit-ai)
+
+*Open source. GitHub-native. Starts working in minutes.*
+
+</div>
 
 

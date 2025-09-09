@@ -812,6 +812,13 @@ const OnboardingChat = ({
                 variant="outlined"
                 size="small"
                 disabled={isLoading}
+                autoComplete="off"
+                inputProps={{
+                  autoComplete: "off",
+                  autoCorrect: "off",
+                  autoCapitalize: "off",
+                  spellCheck: "false"
+                }}
                 sx={{
                   borderRadius: 1.5,
                   '& .MuiOutlinedInput-root': {
