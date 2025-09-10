@@ -1323,7 +1323,7 @@ async function addNpmDependency(content) {
       packageJson.dependencies = {};
     }
     
-    packageJson.dependencies['@handit.ai/handit-ai'] = '^0.0.32';
+    packageJson.dependencies['@handit.ai/handit-ai'] = '^1.0.0';
     
     // Return formatted JSON with proper indentation
     return JSON.stringify(packageJson, null, 2);
@@ -1352,7 +1352,7 @@ async function addPipDependency(content) {
     }
     
     // Add handit-ai to requirements
-    lines.push('handit-ai>=0.0.62');
+    lines.push('handit-ai>=1.0.0');
     
     return lines.join('\n');
   } catch (error) {

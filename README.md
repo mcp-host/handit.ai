@@ -15,11 +15,11 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@handit.ai/node">
-    <img src="https://img.shields.io/npm/v/@handit.ai/node?style=flat&logo=npm&logoColor=white&color=CB3837&labelColor=000000" alt="npm version">
+  <a href="https://www.npmjs.com/package/@handit.ai/handit-ai">
+    <img src="https://img.shields.io/npm/v/@handit.ai/handit-ai?style=flat&logo=npm&logoColor=white&color=CB3837&labelColor=000000" alt="npm version">
   </a>
-  <a href="https://pypi.org/project/handit-sdk/">
-    <img src="https://img.shields.io/pypi/v/handit-sdk?style=flat&logo=pypi&logoColor=white&color=3776AB&labelColor=000000" alt="pypi version">
+  <a href="https://pypi.org/project/handit-ai/">
+    <img src="https://img.shields.io/pypi/v/handit-ai?style=flat&logo=pypi&logoColor=white&color=3776AB&labelColor=000000" alt="pypi version">
   </a>
   <a href="https://github.com/handit-ai/handit.ai/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-green?style=flat&logo=opensourceinitiative&logoColor=white&labelColor=000000" alt="license">
@@ -51,7 +51,6 @@ Modern AI applications are fragile – they hallucinate, break schemas, leak PII
 
 Write JavaScript, TypeScript, Python, and more. What used to take manual debugging and firefighting now happens automatically with handit.ai.
 
-![handit.ai autonomous engineer workflow](https://handit.ai/assets/workflow-diagram.png)
 
 ---
 
@@ -95,6 +94,58 @@ The CLI will guide you through connecting your autonomous engineer:
 - Ready for PRs - your autonomous engineer can now create pull requests
 
 **That's it!** Your autonomous engineer is now monitoring your AI, evaluating quality, and ready to create pull requests with fixes whenever issues are detected.
+
+### Manual Setup (Advanced)
+
+**Need custom control?** Add monitoring decorators manually to your agent functions:
+
+#### 1. Install the SDK
+
+```bash
+# Python
+pip install handit-ai
+
+# JavaScript/TypeScript  
+npm install @handit.ai/handit-ai
+```
+
+#### 2. Add monitoring to your main agent function
+
+**Python:**
+```python
+from handit_ai import configure, tracing
+import os
+
+configure(HANDIT_API_KEY=os.getenv("HANDIT_API_KEY"))
+
+@tracing(agent="customer-service")
+async def process_customer_request(message):
+    # Your existing code here - unchanged
+    intent = await classify_intent(message)
+    response = await generate_response(intent)
+    return response
+```
+
+**JavaScript:**
+```javascript
+import { configure, startTracing, endTracing } from '@handit.ai/handit-ai';
+
+configure({ HANDIT_API_KEY: process.env.HANDIT_API_KEY });
+
+const processCustomerRequest = async (message) => {
+  startTracing({ agent: "customer-service" });
+  try {
+    // Your existing code here - unchanged
+    const intent = await classifyIntent(message);
+    const response = await generateResponse(intent);
+    return response;
+  } finally {
+    endTracing();
+  }
+};
+```
+
+**That's it!** Check [dashboard.handit.ai](https://dashboard.handit.ai) to see your traces.
 
 ---
 
@@ -154,9 +205,9 @@ Write your AI agents in your preferred language:
 
 | Language       | Status        | SDK Package           |
 | -------------- | ------------- | --------------------- |
-| **Python**     | ✅ Stable      | [`handit-sdk>=1.16.0`](https://pypi.org/project/handit-sdk/)  |
-| **JavaScript** | ✅ Stable      | [`@handit.ai/node`](https://www.npmjs.com/package/@handit.ai/node)     |
-| **TypeScript** | ✅ Stable      | [`@handit.ai/node`](https://www.npmjs.com/package/@handit.ai/node)     |
+| **Python**     | ✅ Stable      | [`handit-ai>=0.0.62`](https://pypi.org/project/handit-ai/)  |
+| **JavaScript** | ✅ Stable      | [`@handit.ai/handit-ai`](https://www.npmjs.com/package/@handit.ai/handit-ai)     |
+| **TypeScript** | ✅ Stable      | [`@handit.ai/handit-ai`](https://www.npmjs.com/package/@handit.ai/handit-ai)     |
 | **Go**         | ✅ Available | HTTP API integration          |
 | **Any Stack/Framework** | ✅ Available | HTTP API integration (n8n, Zapier, etc.) |
 | **Java, C#, Ruby, PHP** | ✅ Available | REST API integration |
@@ -326,9 +377,9 @@ Write your AI agents in your preferred language:
 
 | Language       | Status        | SDK Package           |
 | -------------- | ------------- | --------------------- |
-| **Python**     | ✅ Stable      | [`handit-sdk>=1.16.0`](https://pypi.org/project/handit-sdk/)  |
-| **JavaScript** | ✅ Stable      | [`@handit.ai/node`](https://www.npmjs.com/package/@handit.ai/node)     |
-| **TypeScript** | ✅ Stable      | [`@handit.ai/node`](https://www.npmjs.com/package/@handit.ai/node)     |
+| **Python**     | ✅ Stable      | [`handit-ai>=0.0.62`](https://pypi.org/project/handit-ai/)  |
+| **JavaScript** | ✅ Stable      | [`@handit.ai/handit-ai`](https://www.npmjs.com/package/@handit.ai/handit-ai)     |
+| **TypeScript** | ✅ Stable      | [`@handit.ai/handit-ai`](https://www.npmjs.com/package/@handit.ai/handit-ai)     |
 | **Go**         | ✅ Available | HTTP API integration          |
 | **Any Stack/Framework** | ✅ Available | HTTP API integration (n8n, Zapier, etc.) |
 | **Java, C#, Ruby, PHP** | ✅ Available | REST API integration |
