@@ -194,6 +194,7 @@ export const createAgentByName = async (req, res) => {
       description: 'Automatically created agent from tracking request',
       slug: agentSlug,
       repository: repository,
+      companyId: companyId,
     });
     res.status(201).json(agent);
   } catch (error) {
