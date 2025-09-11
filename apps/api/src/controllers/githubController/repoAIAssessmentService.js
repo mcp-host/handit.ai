@@ -1954,10 +1954,19 @@ OUTPUT REQUIREMENTS:
     temperature: 0.2,
   });
 
-  const md =
+  let md =
     completion.text ||
     completion.choices?.[0]?.message?.content ||
     '## Prompt Best Practices Assessment\n\n(No content)';
+
+  if (md.includes('```markdown')) {
+    md = md.replace('```markdown', '')
+    // replace last ```
+    const lastIndex = md.lastIndexOf('```')
+    if (lastIndex !== -1) {
+      md = md.substring(0, lastIndex) + md.substring(lastIndex + 3)
+    }
+  }
   return md;
 }
 
