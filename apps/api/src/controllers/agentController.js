@@ -178,6 +178,29 @@ export const createAgentFunction = async (req, res) => {
   }
 };
 
+export const createAgentByName = async (req, res) => {
+  try {
+    const name = req.body.name;
+    const repository = req.body.repository;
+    const { userObject } = req;
+    const { companyId } = userObject;
+    const agentSlug = name ? generateSlug(name) : null;
+    let agent = await Agent.findOne({ where: { slug: agentSlug, companyId } });
+    if (agent) {
+      return res.status(200).json(agent);
+    }
+    agent = await Agent.create({
+      name: name,
+      description: 'Automatically created agent from tracking request',
+      slug: agentSlug,
+      repository: repository,
+    });
+    res.status(201).json(agent);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
 // Update the me endpoint to filter by company
 export const me = async (req, res) => {
   try {
