@@ -1322,6 +1322,24 @@ const OnboardingOrchestrator = ({
                   handleTourEndWithNextTourCheck();
                 }
               }, 500); // Small delay to ensure GitHub opens first
+            } else if (action.action === 'openGitHubNoAdvance') {
+              // Open GitHub installation URL in new window without advancing to next step
+              const companyId = userState.companyId || 'default';
+              const githubUrl = action.url.replace('${companyId}', companyId);
+              
+              console.log('Opening GitHub URL (no advance):', githubUrl, 'with companyId:', companyId);
+              window.open(githubUrl, '_blank', 'noopener,noreferrer');
+              
+              // Track analytics
+              if (action.analytics) {
+                onboardingService.trackEvent(action.analytics, {
+                  action: 'openGitHubNoAdvance',
+                  url: githubUrl,
+                  companyId: companyId
+                });
+              }
+              
+              // Do NOT advance to next step - let user stay on current step
             } else if (action.action === 'openCalendly') {
               // Open Calendly scheduling URL in new window
               window.open(action.url, '_blank', 'noopener,noreferrer');

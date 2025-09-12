@@ -642,6 +642,43 @@
           },
           {
             "stepNumber": 3,
+            "id": "github-connection-offer",
+            "type": "banner",
+            "title": "Connect GitHub for Automatic Fixes",
+            "target": "body",
+            "placement": "center",
+            "showOnlyIf": {
+              "field": "hasOptimizationPRs",
+              "value": false
+            },
+            "content": {
+              "heading": "🚀 Connect GitHub for Automatic Fixes!",
+              "description": "Connect your GitHub repository and handit.ai will automatically create pull requests with optimized prompts directly in your code. No manual work needed!",
+              "variant": "info",
+              "showCloseButton": false,
+              "autoHide": false,
+              "icon": "🔗"
+            },
+            "actions": [
+              {
+                "text": "Connect GitHub",
+                "type": "primary",
+                "action": "openGitHubNoAdvance",
+                "url": "https://github.com/apps/handit-ai/installations/new?state=${companyId}",
+                "analytics": "optimization_github_connect"
+              },
+              {
+                "text": "Continue to Release Hub",
+                "type": "secondary",
+                "action": "nextStep",
+                "analytics": "optimization_skip_github_connect"
+              }
+            ],
+            "duration": null,
+            "autoAdvance": false
+          },
+          {
+            "stepNumber": 4,
             "id": "navigate-to-release-hub",
             "type": "cursor-only",
             "title": "Navigate to Release Hub",
@@ -697,7 +734,7 @@
             }
           },
           {
-            "stepNumber": 4,
+            "stepNumber": 5,
             "id": "click-first-optimized-model",
             "type": "cursor-only",
             "title": "View First Optimized Model",
@@ -753,7 +790,7 @@
             }
           },
           {
-            "stepNumber": 5,
+            "stepNumber": 6,
             "id": "optimization-comparison-guide",
             "type": "banner",
             "title": "Optimization Comparison Guide",
