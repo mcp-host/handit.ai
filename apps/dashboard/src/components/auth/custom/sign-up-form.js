@@ -60,7 +60,7 @@ const schema = zod.object({
  * Default form values
  * Initializes all form fields as empty strings
  */
-const defaultValues = { firstName: '', lastName: '', email: '', password: '', };
+const defaultValues = { firstName: '', lastName: '', email: '', password: '' };
 
 /**
  * Sign Up Form Component
@@ -94,7 +94,13 @@ export function SignUpForm() {
       const { error } = await authClient.signUp(values);
 
       if (error) {
-        setError('root', { type: 'server', message: error });
+        // Provide user-friendly error messages
+        let errorMessage = error;
+        if (error.includes('Email already registered')) {
+          errorMessage = 'An account with this email address already exists. Please try signing in instead.';
+        }
+        
+        setError('root', { type: 'server', message: errorMessage });
         setIsPending(false);
         return;
       }
@@ -186,7 +192,18 @@ export function SignUpForm() {
             />
 
             {/* Server Error Display */}
-            {errors.root ? <Alert color="error">{errors.root.message}</Alert> : null}
+            {errors.root ? (
+              <Alert color="error">
+                {errors.root.message}
+                {errors.root.message.includes('already exists') && (
+                  <Box sx={{ mt: 1 }}>
+                    <Link component={RouterLink} href={paths.auth.custom.signIn} color="inherit">
+                      Go to Sign In
+                    </Link>
+                  </Box>
+                )}
+              </Alert>
+            ) : null}
             <Button disabled={isPending} type="submit" variant="contained"
               sx={{
                 backgroundImage: 'none',  // Remove gradient

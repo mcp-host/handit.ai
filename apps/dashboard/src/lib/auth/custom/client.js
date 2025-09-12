@@ -54,15 +54,27 @@ class AuthClient {
   /**
    * Registers a new user
    * @param {Object} params - User registration parameters
-   * @returns {Promise<Object>} Empty object on success
+   * @returns {Promise<Object>} Empty object on success, error object on failure
    */
   async signUp(_) {
-    // Make API request to register the user
-    await store.dispatch(authApi.endpoints.signUp.initiate(_));
-    // Fetch user data after successful registration
-    await store.dispatch(authApi.endpoints.getUser.initiate());
-
-    return {};
+    try {
+      // Make API request to register the user
+      const signUpResult = await store.dispatch(authApi.endpoints.signUp.initiate(_));
+      
+      // Check if the signup was successful
+      if (signUpResult.error) {
+        // Extract error message from the API response
+        const errorMessage = signUpResult.error?.data?.error || 'Signup failed';
+        return { error: errorMessage };
+      }
+      
+      // Fetch user data after successful registration
+      await store.dispatch(authApi.endpoints.getUser.initiate());
+      return {};
+    } catch (error) {
+      console.error('Signup error:', error);
+      return { error: error.message || 'Signup failed' };
+    }
   }
 
   /**
