@@ -176,7 +176,7 @@
             "placement": "center",
             "content": {
               "heading": "CLI Setup Instructions",
-              "description": "Follow these steps to setup your autonomous engineer using the CLI:",
+              "description": "Open your terminal in your project directory and run these commands to setup your autonomous engineer:",
               "variant": "info",
               "showCloseButton": false,
               "autoHide": false,
@@ -184,13 +184,13 @@
               "codeBlocks": [
                 {
                   "language": "bash",
-                  "title": "Install CLI",
+                  "title": "Install CLI globally",
                   "code": "npm install -g @handit.ai/cli",
                   "copyable": true
                 },
                 {
                   "language": "bash", 
-                  "title": "Setup Agent",
+                  "title": "Setup your agent in your project",
                   "code": "handit-cli setup",
                   "copyable": true
                 }
