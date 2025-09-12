@@ -2,10 +2,14 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Box, Button, FormControl, InputLabel, MenuItem, Select, Stack, TextField, Typography, Paper, Stepper, Step, StepLabel, CircularProgress, Fade, Alert, AlertTitle } from '@mui/material';
+import { Box, Button, FormControl, InputLabel, MenuItem, Select, Stack, TextField, Typography, Paper, Stepper, Step, StepLabel, CircularProgress, Fade, Alert, AlertTitle, Card, CardContent } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LaunchIcon from '@mui/icons-material/Launch';
+import GitHubIcon from '@mui/icons-material/GitHub';
+import EngineeringIcon from '@mui/icons-material/Engineering';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 import { SplitLayout } from '@/components/auth/split-layout';
+import { GitHubOAuthButton } from '@/components/auth/github-oauth-button';
 
 export default function PublicAssessmentPage() {
   const searchParams = useSearchParams();
@@ -20,6 +24,7 @@ export default function PublicAssessmentPage() {
   const [completedSteps, setCompletedSteps] = useState(new Set());
   const [assessmentResult, setAssessmentResult] = useState(null);
   const [error, setError] = useState(null);
+  const [currentFlowStep, setCurrentFlowStep] = useState(0); // 0: Assessment, 1: Setup, 2: Complete
   const apiBase = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE || '';
 
   const assessmentSteps = [
@@ -28,11 +33,39 @@ export default function PublicAssessmentPage() {
     'Generating report'
   ];
 
+  const flowSteps = [
+    {
+      title: 'AI Assessment',
+      description: 'Analyze your repository and identify optimization opportunities',
+      icon: <AssessmentIcon sx={{ fontSize: 40 }} />,
+      color: 'primary'
+    },
+    {
+      title: 'Setup Autonomous Engineer',
+      description: 'Connect your GitHub account to enable automated improvements',
+      icon: <EngineeringIcon sx={{ fontSize: 40 }} />,
+      color: 'secondary'
+    },
+    {
+      title: 'Complete Setup',
+      description: 'You\'re all set! Your autonomous engineer is ready to help',
+      icon: <CheckCircleIcon sx={{ fontSize: 40 }} />,
+      color: 'success'
+    }
+  ];
+
   useEffect(() => {
     const iid = searchParams.get('integrationId') || searchParams.get('integration_id') || '';
     const instId = searchParams.get('installationId') || searchParams.get('installation_id') || '';
+    const step = searchParams.get('step');
+    
     if (iid) setIntegrationId(iid);
     if (instId) setInstallationId(instId);
+    
+    // Handle flow step from URL
+    if (step === 'complete') {
+      setCurrentFlowStep(2);
+    }
   }, [searchParams]);
 
   useEffect(() => {
@@ -63,6 +96,17 @@ export default function PublicAssessmentPage() {
     setCompletedSteps(new Set());
     setAssessmentResult(null);
     setError(null);
+  };
+
+  const handleSetupAutonomousEngineer = () => {
+    // This will be handled by the GitHubOAuthButton component
+    // The OAuth flow will redirect back to the dashboard
+    console.log('Starting GitHub OAuth setup...');
+  };
+
+  const handleGitHubOAuthSuccess = () => {
+    // Move to completion step
+    setCurrentFlowStep(2);
   };
 
   const handleStartAssessment = async () => {
@@ -107,6 +151,10 @@ export default function PublicAssessmentPage() {
           prUrl: json.prUrl,
           repoName: selectedRepo
         });
+        // Move to next step after a delay
+        setTimeout(() => {
+          setCurrentFlowStep(1);
+        }, 3000);
       } else {
         setError(json?.error || 'Failed to start assessment');
       }
@@ -121,143 +169,282 @@ export default function PublicAssessmentPage() {
   return (
     <SplitLayout>
       <Paper elevation={8} sx={{ p: 4, borderRadius: 3 }}>
-        <Typography variant="h4" sx={{ mb: 2, fontWeight: 700 }}>AI Assessment</Typography>
-        <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
-          Select your GitHub repository and optionally a branch to run an AI assessment. We'll analyze prompts and add a PR with findings.
-        </Typography>
-
-        {/* Assessment Progress Steps */}
-        {submitting && (
-          <Fade in={submitting}>
-            <Box sx={{ mb: 4 }}>
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                Assessment Progress
-              </Typography>
-              <Stack spacing={2}>
-                {assessmentSteps.map((stepLabel, index) => (
-                  <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    {completedSteps.has(index) ? (
-                      <CheckCircleIcon sx={{ color: 'success.main', fontSize: 24 }} />
-                    ) : currentStep === index ? (
-                      <CircularProgress size={24} />
-                    ) : (
-                      <Box sx={{ 
-                        width: 24, 
-                        height: 24, 
-                        borderRadius: '50%', 
-                        border: 2, 
-                        borderColor: 'grey.300',
+        {/* Flow Progress Stepper */}
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, textAlign: 'center' }}>
+            Setup Your Autonomous Engineer
+          </Typography>
+          <Stepper activeStep={currentFlowStep} alternativeLabel>
+            {flowSteps.map((step, index) => (
+              <Step key={index}>
+                <StepLabel
+                  StepIconComponent={() => (
+                    <Box
+                      sx={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: '50%',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center'
-                      }}>
-                        <Typography variant="caption" sx={{ color: 'grey.500', fontWeight: 600 }}>
-                          {index + 1}
-                        </Typography>
-                      </Box>
-                    )}
-                    <Typography 
-                      variant="body1" 
-                      sx={{ 
-                        fontWeight: completedSteps.has(index) ? 600 : 400,
-                        color: completedSteps.has(index) ? 'success.main' : 
-                               currentStep === index ? 'primary.main' : 'text.secondary'
+                        justifyContent: 'center',
+                        backgroundColor: currentFlowStep >= index ? `${step.color}.main` : 'grey.300',
+                        color: currentFlowStep >= index ? 'white' : 'grey.500'
                       }}
                     >
-                      {stepLabel}
-                    </Typography>
-                  </Box>
-                ))}
-              </Stack>
-            </Box>
-          </Fade>
-        )}
+                      {step.icon}
+                    </Box>
+                  )}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 600, mt: 1 }}>
+                    {step.title}
+                  </Typography>
+                </StepLabel>
+              </Step>
+            ))}
+          </Stepper>
+        </Box>
 
-        {/* Success Message */}
-        {assessmentResult && (
-          <Fade in={Boolean(assessmentResult)}>
-            <Alert severity="success" sx={{ mb: 3 }}>
-              <AlertTitle>Assessment Completed Successfully! ✅</AlertTitle>
-              <Typography variant="body2" sx={{ mb: 2 }}>
-                Your AI assessment has been completed and is now available in your repository.
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Typography variant="body2">
-                  📋 <strong>Assessment Report:</strong> Available in <code>docs/ai-assessment.md</code>
+        {/* Step 0: AI Assessment */}
+        {currentFlowStep === 0 && (
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+              <AssessmentIcon sx={{ fontSize: 32, color: 'primary.main' }} />
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  AI Assessment
                 </Typography>
-                <Typography variant="body2">
-                  🔗 <strong>Pull Request:</strong> #{assessmentResult.prNumber} in {assessmentResult.repoName}
+                <Typography variant="body2" color="text.secondary">
+                  Select your GitHub repository to run an AI assessment. We'll analyze prompts and add a PR with findings.
                 </Typography>
-                {assessmentResult.prUrl && (
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<LaunchIcon />}
-                    href={assessmentResult.prUrl}
-                    target="_blank"
-                    sx={{ alignSelf: 'flex-start', mt: 1 }}
+              </Box>
+            </Box>
+
+            {/* Assessment Progress Steps */}
+            {submitting && (
+              <Fade in={submitting}>
+                <Box sx={{ mb: 4 }}>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                    Assessment Progress
+                  </Typography>
+                  <Stack spacing={2}>
+                    {assessmentSteps.map((stepLabel, index) => (
+                      <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        {completedSteps.has(index) ? (
+                          <CheckCircleIcon sx={{ color: 'success.main', fontSize: 24 }} />
+                        ) : currentStep === index ? (
+                          <CircularProgress size={24} />
+                        ) : (
+                          <Box sx={{ 
+                            width: 24, 
+                            height: 24, 
+                            borderRadius: '50%', 
+                            border: 2, 
+                            borderColor: 'grey.300',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <Typography variant="caption" sx={{ color: 'grey.500', fontWeight: 600 }}>
+                              {index + 1}
+                            </Typography>
+                          </Box>
+                        )}
+                        <Typography 
+                          variant="body1" 
+                          sx={{ 
+                            fontWeight: completedSteps.has(index) ? 600 : 400,
+                            color: completedSteps.has(index) ? 'success.main' : 
+                                   currentStep === index ? 'primary.main' : 'text.secondary'
+                          }}
+                        >
+                          {stepLabel}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Stack>
+                </Box>
+              </Fade>
+            )}
+
+            {/* Success Message */}
+            {assessmentResult && (
+              <Fade in={Boolean(assessmentResult)}>
+                <Alert severity="success" sx={{ mb: 3 }}>
+                  <AlertTitle>Assessment Completed Successfully! ✅</AlertTitle>
+                  <Typography variant="body2" sx={{ mb: 2 }}>
+                    Your AI assessment has been completed and is now available in your repository.
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Typography variant="body2">
+                      📋 <strong>Assessment Report:</strong> Available in <code>docs/ai-assessment.md</code>
+                    </Typography>
+                    <Typography variant="body2">
+                      🔗 <strong>Pull Request:</strong> #{assessmentResult.prNumber} in {assessmentResult.repoName}
+                    </Typography>
+                    {assessmentResult.prUrl && (
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<LaunchIcon />}
+                        href={assessmentResult.prUrl}
+                        target="_blank"
+                        sx={{ alignSelf: 'flex-start', mt: 1 }}
+                      >
+                        View Pull Request
+                      </Button>
+                    )}
+                  </Box>
+                </Alert>
+              </Fade>
+            )}
+
+            {/* Error Message */}
+            {error && (
+              <Fade in={Boolean(error)}>
+                <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+                  <AlertTitle>Assessment Failed</AlertTitle>
+                  <Typography variant="body2">
+                    {error}
+                  </Typography>
+                </Alert>
+              </Fade>
+            )}
+
+            <Stack spacing={2}>
+              <FormControl size="small" disabled={!(integrationId || installationId) || loadingRepos}>
+                <InputLabel id="repo-select-label">Repository</InputLabel>
+                <Select
+                  labelId="repo-select-label"
+                  label="Repository"
+                  value={selectedRepo}
+                  onChange={(e) => setSelectedRepo(e.target.value)}
+                >
+                  {repos.map(r => (
+                    <MenuItem key={r.id} value={`${r.owner}/${r.name}`}>{r.fullName}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <TextField
+                label="Branch (optional)"
+                value={branch}
+                onChange={(e) => setBranch(e.target.value)}
+                placeholder="main"
+                size="small"
+              />
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button 
+                  variant="outlined" 
+                  onClick={handleStartAssessment} 
+                  disabled={!canSubmit || submitting}
+                  sx={{ flex: 1 }}
+                >
+                  {submitting ? 'Running Assessment...' : 'Start Assessment'}
+                </Button>
+                {assessmentResult && (
+                  <Button 
+                    variant="text" 
+                    onClick={resetSteps}
+                    sx={{ whiteSpace: 'nowrap' }}
                   >
-                    View Pull Request
+                    Run Another
                   </Button>
                 )}
               </Box>
-            </Alert>
-          </Fade>
+            </Stack>
+          </Box>
         )}
 
-        {/* Error Message */}
-        {error && (
-          <Fade in={Boolean(error)}>
-            <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-              <AlertTitle>Assessment Failed</AlertTitle>
-              <Typography variant="body2">
-                {error}
-              </Typography>
-            </Alert>
-          </Fade>
-        )}
+        {/* Step 1: Setup Autonomous Engineer */}
+        {currentFlowStep === 1 && (
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+              <EngineeringIcon sx={{ fontSize: 32, color: 'secondary.main' }} />
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  Setup Your Autonomous Engineer
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Connect your GitHub account to enable automated AI improvements and continuous optimization.
+                </Typography>
+              </Box>
+            </Box>
 
-        <Stack spacing={2}>
-          <FormControl size="small" disabled={!(integrationId || installationId) || loadingRepos}>
-            <InputLabel id="repo-select-label">Repository</InputLabel>
-            <Select
-              labelId="repo-select-label"
-              label="Repository"
-              value={selectedRepo}
-              onChange={(e) => setSelectedRepo(e.target.value)}
-            >
-              {repos.map(r => (
-                <MenuItem key={r.id} value={`${r.owner}/${r.name}`}>{r.fullName}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <TextField
-            label="Branch (optional)"
-            value={branch}
-            onChange={(e) => setBranch(e.target.value)}
-            placeholder="main"
-            size="small"
-          />
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button 
-              variant="outlined" 
-              onClick={handleStartAssessment} 
-              disabled={!canSubmit || submitting}
-              sx={{ flex: 1 }}
-            >
-              {submitting ? 'Running Assessment...' : 'Start Assessment'}
-            </Button>
-            {assessmentResult && (
+            <Card sx={{ mb: 3, border: '2px dashed', borderColor: 'secondary.main' }}>
+              <CardContent sx={{ textAlign: 'center', py: 4 }}>
+                <GitHubIcon sx={{ fontSize: 64, color: 'secondary.main', mb: 2 }} />
+                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                  Connect with GitHub
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  Sign in with GitHub to automatically discover your organizations and repositories with the Handit app installed.
+                </Typography>
+                <GitHubOAuthButton 
+                  fullWidth 
+                  onSuccess={handleGitHubOAuthSuccess}
+                  redirectUri={`${window.location.origin}/assessment?step=complete`}
+                />
+              </CardContent>
+            </Card>
+
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
               <Button 
                 variant="text" 
-                onClick={resetSteps}
-                sx={{ whiteSpace: 'nowrap' }}
+                onClick={() => setCurrentFlowStep(0)}
               >
-                Run Another
+                ← Back to Assessment
               </Button>
-            )}
+            </Box>
           </Box>
-        </Stack>
+        )}
+
+        {/* Step 2: Complete Setup */}
+        {currentFlowStep === 2 && (
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+              <CheckCircleIcon sx={{ fontSize: 32, color: 'success.main' }} />
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  Setup Complete! 🎉
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Your autonomous engineer is now ready to help optimize your AI prompts and code.
+                </Typography>
+              </Box>
+            </Box>
+
+            <Alert severity="success" sx={{ mb: 3 }}>
+              <AlertTitle>Welcome to Handit! 🚀</AlertTitle>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                Your autonomous engineer is now connected and ready to help you:
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Typography variant="body2">
+                  ✅ <strong>Automatically optimize prompts</strong> based on performance data
+                </Typography>
+                <Typography variant="body2">
+                  ✅ <strong>Generate pull requests</strong> with improvements and best practices
+                </Typography>
+                <Typography variant="body2">
+                  ✅ <strong>Monitor AI performance</strong> across your repositories
+                </Typography>
+                <Typography variant="body2">
+                  ✅ <strong>Provide insights</strong> and recommendations for better results
+                </Typography>
+              </Box>
+            </Alert>
+
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+              <Button 
+                variant="contained" 
+                size="large"
+                href="/"
+                sx={{ px: 4 }}
+              >
+                Go to Dashboard
+              </Button>
+            </Box>
+          </Box>
+        )}
       </Paper>
     </SplitLayout>
   );

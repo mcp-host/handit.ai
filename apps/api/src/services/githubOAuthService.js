@@ -73,6 +73,36 @@ class GitHubOAuthService {
   }
 
   /**
+   * Generate GitHub App JWT for API authentication
+   * @returns {string} JWT token for GitHub App
+   */
+  static generateGitHubAppJWT() {
+    const appId = process.env.GITHUB_APP_ID;
+    const privateKey = process.env.GITHUB_APP_PRIVATE_KEY;
+
+    if (!appId || !privateKey) {
+      throw new Error('GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY environment variables are required');
+    }
+
+    // Format the private key (handle both raw and base64 encoded keys)
+    let formattedPrivateKey = privateKey;
+    if (!privateKey.includes('-----BEGIN')) {
+      // If it's base64 encoded, decode it
+      formattedPrivateKey = Buffer.from(privateKey, 'base64').toString('utf8');
+    }
+
+    // JWT payload
+    const payload = {
+      iat: Math.floor(Date.now() / 1000) - 60, // Issued at time (60 seconds ago to account for clock skew)
+      exp: Math.floor(Date.now() / 1000) + (10 * 60), // Expires in 10 minutes
+      iss: parseInt(appId) // GitHub App ID
+    };
+
+    // Generate JWT
+    return jwt.sign(payload, formattedPrivateKey, { algorithm: 'RS256' });
+  }
+
+  /**
    * Get user's accessible GitHub App installations
    * @param {string} accessToken - GitHub user access token
    * @returns {Promise<Array>} Array of installations the user can access
@@ -104,16 +134,19 @@ class GitHubOAuthService {
 
       const userAccount = userResponse.data;
       
-      // Check which organizations have our GitHub App installed
+      // Check which organizations have our GitHub App installed using App JWT
       const handitAppId = parseInt(process.env.GITHUB_APP_ID);
       const installations = [];
+
+      // Generate GitHub App JWT for installation checks
+      const appJWT = this.generateGitHubAppJWT();
 
       // Check user's own account
       try {
         const userInstallationResponse = await axios.get(`https://api.github.com/orgs/${userAccount.login}/installation`, {
           headers: {
             'Accept': 'application/vnd.github+json',
-            'Authorization': `Bearer ${accessToken}`,
+            'Authorization': `Bearer ${appJWT}`,
             'X-GitHub-Api-Version': '2022-11-28',
             'User-Agent': 'handit-ai/1.0.0',
           },
@@ -133,7 +166,7 @@ class GitHubOAuthService {
           const orgInstallationResponse = await axios.get(`https://api.github.com/orgs/${org.login}/installation`, {
             headers: {
               'Accept': 'application/vnd.github+json',
-              'Authorization': `Bearer ${accessToken}`,
+              'Authorization': `Bearer ${appJWT}`,
               'X-GitHub-Api-Version': '2022-11-28',
               'User-Agent': 'handit-ai/1.0.0',
             },
