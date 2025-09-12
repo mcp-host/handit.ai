@@ -185,19 +185,49 @@
         <p><strong>What we saw and fixed:</strong> Multiple clarity issues, potential hallucinations, and inconsistent responses that were causing your AI to underperform.</p>
       </div>
 
-      <p class="main-text">
-        The new version is ready to deploy and should give you noticeably better results. 
-        You can deploy it with one click and see the improvements immediately.
-      </p>
+      {{#if hasGitHubIntegration}}
+        {{#if prUrl}}
+          <p class="main-text">
+            Great news! We've automatically created a pull request with your improved prompt and deployed it directly to your repository. 
+            The new version is now live and should give you noticeably better results.
+          </p>
+        {{else}}
+          <p class="main-text">
+            The new version is ready to deploy and should give you noticeably better results. 
+            You can deploy it with one click and see the improvements immediately.
+          </p>
+        {{/if}}
+      {{else}}
+        <p class="main-text">
+          The new version is ready to deploy and should give you noticeably better results. 
+          You can deploy it with one click and see the improvements immediately.
+        </p>
+      {{/if}}
 
       <div class="cta-section">
-        <a href="{{promptVersionsUrl}}" class="cta-button">
-          🚀 Deploy Improved Version Now
-        </a>
-        <div class="cta-text">One-click deployment with instant rollback if needed</div>
-        <a href="https://calendly.com/cristhian-handit/30min" class="secondary-cta">
-          Or book a call if you want me to walk you through it
-        </a>
+        {{#if hasGitHubIntegration}}
+          {{#if prUrl}}
+            <a href="{{prUrl}}" class="cta-button" target="_blank">
+              🔗 View Pull Request #{{prNumber}}
+            </a>
+          {{else}}
+            <a href="{{promptVersionsUrl}}" class="cta-button">
+              🚀 Deploy Improved Version Now
+            </a>
+            <div class="cta-text">One-click deployment with instant rollback if needed</div>
+            <a href="https://calendly.com/cristhian-handit/30min" class="secondary-cta">
+              Or book a call if you want me to walk you through it
+            </a>
+          {{/if}}
+        {{else}}
+          <a href="{{promptVersionsUrl}}" class="cta-button">
+            🚀 Deploy Improved Version Now
+          </a>
+          <div class="cta-text">One-click deployment with instant rollback if needed</div>
+          <a href="{{githubConnectUrl}}" class="secondary-cta" target="_blank">
+            🔗 Connect GitHub for Automatic PR Delivery
+          </a>
+        {{/if}}
       </div>
 
       <p class="main-text">

@@ -1064,8 +1064,11 @@ export const sendBulkAgentsWithoutEvaluatorsEmails = async ({
  * @param {string} [options.promptVersionsUrl] - URL to the prompt versions page.
  * @param {Object} options.Email - Email model for database operations.
  * @param {Object} options.User - User model for database operations.
+ * @param {Object} options.GitHubIntegration - GitHubIntegration model for database operations.
  * @param {string} [options.notificationSource] - Source of the notification.
  * @param {number} [options.sourceId] - ID of the source.
+ * @param {string} [options.prUrl] - URL to the created PR (if GitHub integration exists).
+ * @param {number} [options.prNumber] - PR number (if GitHub integration exists).
  * @returns {Promise<void>}
  */
 export const sendPromptVersionCreatedEmail = async ({
@@ -1079,10 +1082,32 @@ export const sendPromptVersionCreatedEmail = async ({
   promptVersionsUrl = 'http://localhost:3000/prompt-versions',
   Email,
   User,
+  GitHubIntegration,
   notificationSource = 'prompt_version_created',
   sourceId = null,
+  prUrl = null,
+  prNumber = null,
 }) => {
   const subject = 'Handit Found an Improved Version of Your Prompt 🚀';
+
+  // Get user to check for GitHub integration
+  const user = await User.findOne({ where: { email: recipientEmail } });
+  let hasGitHubIntegration = false;
+  let githubConnectUrl = null;
+
+  if (user) {
+    // Check if user's company has GitHub integration
+    const githubIntegration = await GitHubIntegration.findOne({
+      where: { companyId: user.companyId, active: true }
+    });
+    
+    hasGitHubIntegration = !!githubIntegration;
+    
+    if (!hasGitHubIntegration) {
+      // Generate GitHub connection URL for the company
+      githubConnectUrl = `https://github.com/apps/handit-ai/installations/new?state=${user.companyId}`;
+    }
+  }
 
   const templateData = {
     firstName: firstName,
@@ -1092,6 +1117,10 @@ export const sendPromptVersionCreatedEmail = async ({
     agentId: agentId,
     modelId: modelId,
     promptVersionsUrl: `${promptVersionsUrl}?agentId=${agentId}&modelId=${modelId}&promptVersion=${promptVersion}&autoDeploy=true`,
+    hasGitHubIntegration: hasGitHubIntegration,
+    prUrl: prUrl,
+    prNumber: prNumber,
+    githubConnectUrl: githubConnectUrl,
     year: new Date().getFullYear(),
   };
 
@@ -1136,6 +1165,7 @@ export const sendPromptVersionCreatedEmail = async ({
  * @param {string} [options.promptVersionsUrl] - URL to the prompt versions page.
  * @param {Object} options.Email - Email model for database operations.
  * @param {Object} options.User - User model for database operations.
+ * @param {Object} options.GitHubIntegration - GitHubIntegration model for database operations.
  * @param {string} [options.notificationSource] - Source of the notification.
  * @returns {Promise<void>}
  */
@@ -1144,6 +1174,7 @@ export const sendBulkPromptVersionCreatedEmails = async ({
   promptVersionsUrl = 'https://dashboard.handit.ai/prompt-versions',
   Email,
   User,
+  GitHubIntegration,
   notificationSource = 'prompt_version_created_bulk',
 }) => {
   console.log(
@@ -1169,8 +1200,11 @@ export const sendBulkPromptVersionCreatedEmails = async ({
         promptVersionsUrl,
         Email,
         User,
+        GitHubIntegration,
         notificationSource,
         sourceId: notification.id,
+        prUrl: notification.prUrl,
+        prNumber: notification.prNumber,
       });
 
       results.sent++;

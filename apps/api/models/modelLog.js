@@ -688,6 +688,57 @@ export default (sequelize, DataTypes) => {
                         console.log(
                           `✅ Successfully created GitHub PR #${prResult.prNumber}: ${prResult.prUrl}`
                         );
+                        
+                        // Send email notification for prompt optimization PR
+                        try {
+                          const company = await sequelize.models.Company.findByPk(
+                            agent.companyId
+                          );
+
+                          // Get users of the company
+                          const users = await sequelize.models.User.findAll({
+                            where: {
+                              companyId: company.id,
+                              deletedAt: null,
+                            },
+                          });
+
+                          // Get the prompt version
+                          const modelVersions = await sequelize.models.ModelVersions.findAll({
+                            where: {
+                              modelId: model.id,
+                            },
+                            order: [['createdAt', 'DESC']],
+                            limit: 1,
+                          });
+
+                          const promptVersion = modelVersions[0]?.version || '1';
+
+                          // Send email to each user
+                          for (const user of users) {
+                            await sendPromptVersionCreatedEmail({
+                              recipientEmail: user.email,
+                              firstName: user.firstName,
+                              agentName: agent.name,
+                              modelName: model.name,
+                              promptVersion: promptVersion,
+                              agentId: agent.id,
+                              modelId: model.id,
+                              Email: sequelize.models.Email,
+                              User: sequelize.models.User,
+                              GitHubIntegration: sequelize.models.GitHubIntegration,
+                              notificationSource: 'prompt_version_created',
+                              sourceId: model.id,
+                              prUrl: prResult.prUrl,
+                              prNumber: prResult.prNumber,
+                            });
+                          }
+                        } catch (emailError) {
+                          console.error(
+                            'Error sending prompt optimization PR email:',
+                            emailError
+                          );
+                        }
                       } else {
                         console.log(
                           `❌ Failed to create GitHub PR: ${prResult.error}`
@@ -742,6 +793,7 @@ export default (sequelize, DataTypes) => {
                     await model.updateOptimizedPrompt(newPrompt);
 
                     // Create GitHub PR for prompt optimization
+                    let prResult = null;
                     try {
                       const agentNode =
                         await sequelize.models.AgentNode.findOne({
@@ -755,7 +807,6 @@ export default (sequelize, DataTypes) => {
                         const agent = await sequelize.models.Agent.findByPk(
                           agentNode.agentId
                         );
-
                         if (agent && agent.repository) {
                           const originalPrompt =
                             model.parameters?.prompt ||
@@ -768,7 +819,7 @@ export default (sequelize, DataTypes) => {
                             `🔄 Creating GitHub PR for prompt optimization - Agent: ${agent.name}`
                           );
 
-                          const prResult = await createPromptOptimizationPR({
+                          prResult = await createPromptOptimizationPR({
                             agent,
                             originalPrompt,
                             optimizedPrompt: newPrompt,
@@ -846,8 +897,11 @@ export default (sequelize, DataTypes) => {
                             modelId: model.id,
                             Email: sequelize.models.Email,
                             User: sequelize.models.User,
+                            GitHubIntegration: sequelize.models.GitHubIntegration,
                             notificationSource: 'prompt_version_created',
                             sourceId: model.id,
+                            prUrl: prResult?.success ? prResult.prUrl : null,
+                            prNumber: prResult?.success ? prResult.prNumber : null,
                           });
                         }
                       }
