@@ -43,6 +43,7 @@ import { useDispatch } from 'react-redux';
 import { store } from '@/store';
 import { isSandboxPage } from '@/lib/sandbox';
 import { event } from '@/lib/gtag';
+import { GitHubOAuthButton } from '@/components/auth/github-oauth-button';
 
 /**
  * Validation schema for the sign-in form
@@ -233,6 +234,12 @@ export function SignInForm() {
             </Stack>
           </form>
         </Stack>
+
+        {/* GitHub OAuth Button */}
+        <GitHubOAuthButton 
+          fullWidth 
+          showDivider 
+        />
       </Stack>
     </Stack>
   );

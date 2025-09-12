@@ -96,6 +96,22 @@ export default (sequelize, DataTypes) => {
       allowNull: true,
       field: 'onboarding_current_tour'
     },
+    githubUserId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true,
+      field: 'github_user_id'
+    },
+    githubUsername: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'github_username'
+    },
+    oauthProvider: {
+      type: DataTypes.ENUM('github', 'google', 'microsoft'),
+      allowNull: true,
+      field: 'oauth_provider'
+    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

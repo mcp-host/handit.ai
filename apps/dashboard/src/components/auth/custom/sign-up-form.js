@@ -39,6 +39,7 @@ import { authClient } from '@/lib/auth/custom/client';
 import { useUser } from '@/hooks/use-user';
 import { DynamicLogo } from '@/components/core/logo';
 import { toast } from '@/components/core/toaster';
+import { GitHubOAuthButton } from '@/components/auth/github-oauth-button';
 
 /**
  * Form validation schema using Zod
@@ -199,6 +200,12 @@ export function SignUpForm() {
             </Button>
           </Stack>
         </form>
+
+        {/* GitHub OAuth Button */}
+        <GitHubOAuthButton 
+          fullWidth 
+          showDivider 
+        />
       </Stack>
     </Stack>
   );

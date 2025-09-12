@@ -14,21 +14,40 @@ const HANDIT_CLOUD_ENABLED = process.env.HANDIT_CLOUD_ENABLED === 'true';
  * @returns {Promise<void>} Throws error if not allowed
  */
 export const checkMembership = async ({ user, token, endpoint, method, actionKey }) => {
+  console.log('🔍 Membership check:', { 
+    HANDIT_CLOUD_ENABLED, 
+    HANDIT_SASS_URL: HANDIT_SASS_URL ? 'SET' : 'NOT SET',
+    endpoint,
+    method 
+  });
+  
   if (!HANDIT_CLOUD_ENABLED) {
+    console.log('✅ Membership check skipped - cloud disabled');
     return;
   }
   if (!HANDIT_SASS_URL) {
+    console.error('❌ HANDIT_SASS_URL is not set');
     throw new Error('HANDIT_SASS_URL is not set');
   }
 
-  const response = await axios.post(HANDIT_SASS_URL, {
-    user,
-    token,
-    endpoint,
-    method,
-    actionKey,
-  });
-  if (!response.data.allowed) {
-    throw new Error(response.data.message || 'Action not allowed by plan');
+  try {
+    const response = await axios.post(HANDIT_SASS_URL, {
+      user,
+      token,
+      endpoint,
+      method,
+      actionKey,
+    });
+    
+    console.log('📡 Membership check response:', response.data);
+    
+    if (!response.data.allowed) {
+      throw new Error(response.data.message || 'Action not allowed by plan');
+    }
+    
+    console.log('✅ Membership check passed');
+  } catch (error) {
+    console.error('❌ Membership check failed:', error.message);
+    throw error;
   }
 }

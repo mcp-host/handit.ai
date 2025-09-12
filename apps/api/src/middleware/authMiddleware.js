@@ -22,6 +22,13 @@ export const authenticateJWT = async (req, res, next) => {
       }
 
       req.userObject = user;
+      
+      // Skip membership check for /users/me endpoint during OAuth flow
+      if (req.originalUrl === '/users/me' && req.method === 'GET') {
+        console.log('⏭️ Skipping membership check for /users/me during OAuth flow');
+        return next();
+      }
+      
       // Membership check for user
       try {
         await checkMembership({
@@ -32,6 +39,7 @@ export const authenticateJWT = async (req, res, next) => {
           actionKey: `${req.method}_${req.originalUrl}`,
         });
       } catch (err) {
+        console.error('❌ Membership check failed:', err.message);
         return res.status(403).json({ error: err.message || 'Membership check failed' });
       }
       return next();

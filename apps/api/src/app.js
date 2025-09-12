@@ -7,6 +7,7 @@ import compression from 'compression';
 import authRoutes from './routes/authRoutes.js';
 import cliAuthRoutes from './routes/cliAuthRoutes.js';
 import githubRoutes from './routes/githubRoutes.js';
+import githubOAuthRoutes from './routes/githubOAuthRoutes.js';
 import agentStructureRoutes from './routes/agentStructureRoutes.js';
 
 // Importing all route files
@@ -92,6 +93,7 @@ app.use('/api/email-autonom', emailAutonomRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/cli/auth', cliAuthRoutes);
 app.use('/api/git', githubRoutes);
+app.use('/api/auth/github', githubOAuthRoutes);
 app.use('/api/sampling', validateApiToken, samplingRoutes);
 app.use('/api/node-metrics', validateApiToken, nodeMetricsRoutes);
 app.use('/api/messages', validateApiToken, messageRouter);
