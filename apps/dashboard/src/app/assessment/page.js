@@ -6,8 +6,6 @@ import { Box, Button, FormControl, InputLabel, MenuItem, Select, Stack, TextFiel
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LaunchIcon from '@mui/icons-material/Launch';
 import GitHubIcon from '@mui/icons-material/GitHub';
-import EngineeringIcon from '@mui/icons-material/Engineering';
-import AssessmentIcon from '@mui/icons-material/Assessment';
 import { SplitLayout } from '@/components/auth/split-layout';
 import { GitHubOAuthButton } from '@/components/auth/github-oauth-button';
 
@@ -24,7 +22,7 @@ export default function PublicAssessmentPage() {
   const [completedSteps, setCompletedSteps] = useState(new Set());
   const [assessmentResult, setAssessmentResult] = useState(null);
   const [error, setError] = useState(null);
-  const [currentFlowStep, setCurrentFlowStep] = useState(0); // 0: Assessment, 1: Setup, 2: Complete
+  const [currentFlowStep, setCurrentFlowStep] = useState(0); // 0: Assessment, 1: Setup
   const apiBase = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE || '';
 
   const assessmentSteps = [
@@ -37,35 +35,23 @@ export default function PublicAssessmentPage() {
     {
       title: 'AI Assessment',
       description: 'Analyze your repository and identify optimization opportunities',
-      icon: <AssessmentIcon sx={{ fontSize: 40 }} />,
+      number: 1,
       color: 'primary'
     },
     {
       title: 'Setup Autonomous Engineer',
       description: 'Connect your GitHub account to enable automated improvements',
-      icon: <EngineeringIcon sx={{ fontSize: 40 }} />,
+      number: 2,
       color: 'secondary'
-    },
-    {
-      title: 'Complete Setup',
-      description: 'You\'re all set! Your autonomous engineer is ready to help',
-      icon: <CheckCircleIcon sx={{ fontSize: 40 }} />,
-      color: 'success'
     }
   ];
 
   useEffect(() => {
     const iid = searchParams.get('integrationId') || searchParams.get('integration_id') || '';
     const instId = searchParams.get('installationId') || searchParams.get('installation_id') || '';
-    const step = searchParams.get('step');
     
     if (iid) setIntegrationId(iid);
     if (instId) setInstallationId(instId);
-    
-    // Handle flow step from URL
-    if (step === 'complete') {
-      setCurrentFlowStep(2);
-    }
   }, [searchParams]);
 
   useEffect(() => {
@@ -105,8 +91,8 @@ export default function PublicAssessmentPage() {
   };
 
   const handleGitHubOAuthSuccess = () => {
-    // Move to completion step
-    setCurrentFlowStep(2);
+    // Redirect to dashboard after successful authentication
+    window.location.href = '/';
   };
 
   const handleStartAssessment = async () => {
@@ -188,10 +174,12 @@ export default function PublicAssessmentPage() {
                         alignItems: 'center',
                         justifyContent: 'center',
                         backgroundColor: currentFlowStep >= index ? `${step.color}.main` : 'grey.300',
-                        color: currentFlowStep >= index ? 'white' : 'grey.500'
+                        color: currentFlowStep >= index ? 'white' : 'grey.500',
+                        fontWeight: 'bold',
+                        fontSize: '1.2rem'
                       }}
                     >
-                      {step.icon}
+                      {step.number}
                     </Box>
                   )}
                 >
@@ -208,7 +196,22 @@ export default function PublicAssessmentPage() {
         {currentFlowStep === 0 && (
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-              <AssessmentIcon sx={{ fontSize: 32, color: 'primary.main' }} />
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: 'primary.main',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  fontSize: '1.1rem'
+                }}
+              >
+                1
+              </Box>
               <Box>
                 <Typography variant="h5" sx={{ fontWeight: 600 }}>
                   AI Assessment
@@ -358,7 +361,22 @@ export default function PublicAssessmentPage() {
         {currentFlowStep === 1 && (
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-              <EngineeringIcon sx={{ fontSize: 32, color: 'secondary.main' }} />
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: 'secondary.main',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  fontSize: '1.1rem'
+                }}
+              >
+                2
+              </Box>
               <Box>
                 <Typography variant="h5" sx={{ fontWeight: 600 }}>
                   Setup Your Autonomous Engineer
@@ -373,15 +391,15 @@ export default function PublicAssessmentPage() {
               <CardContent sx={{ textAlign: 'center', py: 4 }}>
                 <GitHubIcon sx={{ fontSize: 64, color: 'secondary.main', mb: 2 }} />
                 <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                  Connect with GitHub
+                  Sign in to Continue
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  Sign in with GitHub to automatically discover your organizations and repositories with the Handit app installed.
+                  Sign in with GitHub to set up your autonomous engineer and enable automated AI improvements for your repositories.
                 </Typography>
                 <GitHubOAuthButton 
                   fullWidth 
                   onSuccess={handleGitHubOAuthSuccess}
-                  redirectUri={`${window.location.origin}/assessment?step=complete`}
+                  redirectUri={`${window.location.origin}/`}
                 />
               </CardContent>
             </Card>
@@ -397,54 +415,6 @@ export default function PublicAssessmentPage() {
           </Box>
         )}
 
-        {/* Step 2: Complete Setup */}
-        {currentFlowStep === 2 && (
-          <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-              <CheckCircleIcon sx={{ fontSize: 32, color: 'success.main' }} />
-              <Box>
-                <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                  Setup Complete! 🎉
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Your autonomous engineer is now ready to help optimize your AI prompts and code.
-                </Typography>
-              </Box>
-            </Box>
-
-            <Alert severity="success" sx={{ mb: 3 }}>
-              <AlertTitle>Welcome to Handit! 🚀</AlertTitle>
-              <Typography variant="body2" sx={{ mb: 2 }}>
-                Your autonomous engineer is now connected and ready to help you:
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Typography variant="body2">
-                  ✅ <strong>Automatically optimize prompts</strong> based on performance data
-                </Typography>
-                <Typography variant="body2">
-                  ✅ <strong>Generate pull requests</strong> with improvements and best practices
-                </Typography>
-                <Typography variant="body2">
-                  ✅ <strong>Monitor AI performance</strong> across your repositories
-                </Typography>
-                <Typography variant="body2">
-                  ✅ <strong>Provide insights</strong> and recommendations for better results
-                </Typography>
-              </Box>
-            </Alert>
-
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
-              <Button 
-                variant="contained" 
-                size="large"
-                href="/"
-                sx={{ px: 4 }}
-              >
-                Go to Dashboard
-              </Button>
-            </Box>
-          </Box>
-        )}
       </Paper>
     </SplitLayout>
   );
