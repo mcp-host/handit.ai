@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import {
   X as CloseIcon,
+  Copy as CopyIcon,
 } from '@phosphor-icons/react';
 
   // Custom hook for typing animation
@@ -193,14 +194,14 @@ const OnboardingBanner = React.memo(({
 
   return (
     <Fade in={visible} timeout={200}>
-      <Box
+        <Box
         sx={{
           position: 'fixed',
-          top: position.top,
+          top: content?.videoUrl && position.top === '50%' ? '40%' : content?.videoUrl ? position.top - 50 : position.top,
           left: position.left,
           transform: position.transform,
           zIndex: 9997,
-          maxWidth: 500,
+          maxWidth: content?.videoUrl ? 600 : 500,
           borderRadius: 1.5,
         }}
       >
@@ -294,7 +295,7 @@ const OnboardingBanner = React.memo(({
                       <Box key={index} sx={{ mb: index < content.codeSnippet.commands.length - 1 ? 1 : 0 }}>
                         <Typography variant="body2" sx={{ 
                           fontFamily: 'monospace', 
-                          color: '#00ff00',
+                          color: '#71f2af',
                           fontSize: '0.875rem',
                           lineHeight: 1.4
                         }}>
@@ -302,6 +303,97 @@ const OnboardingBanner = React.memo(({
                         </Typography>
                       </Box>
                     ))}
+                  </Card>
+                </Box>
+              )}
+
+              {/* Code Blocks */}
+              {content?.codeBlocks && (
+                <Box sx={{ mb: 2 }}>
+                  {content.codeBlocks.map((block, index) => (
+                    <Card key={index} sx={{ 
+                      bgcolor: 'rgba(0, 0, 0, 0.3)', 
+                      p: 2, 
+                      mb: 2,
+                      borderRadius: 1,
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      position: 'relative'
+                    }}>
+                      {block.title && (
+                        <Typography variant="caption" sx={{ 
+                          color: 'rgba(255, 255, 255, 0.7)',
+                          mb: 1,
+                          display: 'block',
+                          fontSize: '0.75rem',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px'
+                        }}>
+                          {block.title}
+                        </Typography>
+                      )}
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" sx={{ 
+                          fontFamily: 'monospace', 
+                          color: '#71f2af',
+                          fontSize: '0.875rem',
+                          lineHeight: 1.4,
+                          flex: 1
+                        }}>
+                          $ {block.code}
+                        </Typography>
+                        {block.copyable && (
+                          <Button
+                            size="small"
+                            onClick={() => {
+                              navigator.clipboard.writeText(block.code);
+                              // You could add a toast notification here
+                            }}
+                            sx={{
+                              minWidth: 'auto',
+                              p: 0.5,
+                              color: 'rgba(255, 255, 255, 0.7)',
+                              '&:hover': {
+                                color: '#71f2af',
+                                bgcolor: 'rgba(255, 255, 255, 0.1)'
+                              }
+                            }}
+                          >
+                            <CopyIcon size={16} />
+                          </Button>
+                        )}
+                      </Box>
+                    </Card>
+                  ))}
+                </Box>
+              )}
+
+              {/* Video Player */}
+              {content?.videoUrl && (
+                <Box sx={{ mb: 2 }}>
+                  <Card sx={{ 
+                    bgcolor: 'rgba(0, 0, 0, 0.3)', 
+                    p: 1, 
+                    borderRadius: 1,
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    overflow: 'hidden'
+                  }}>
+                    <video
+                      controls
+                      autoPlay
+                      loop
+                      style={{
+                        width: '100%',
+                        maxWidth: '800px',
+                        height: 'auto',
+                        borderRadius: '8px'
+                      }}
+                      onError={(e) => {
+                        console.error('Video failed to load:', e);
+                      }}
+                    >
+                      <source src={content.videoUrl} type="video/mp4" />
+                      Your browser does not support the video tag.
+                    </video>
                   </Card>
                 </Box>
               )}

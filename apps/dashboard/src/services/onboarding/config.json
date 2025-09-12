@@ -81,11 +81,72 @@
             },
             "actions": [
               {
-                "text": "Setup My Engineer",
+                "text": "Watch Demo",
+                "type": "secondary",
+                "action": "nextTour",
+                "nextTourId": "demo-video",
+                "analytics": "welcome_see_demo"
+              },
+              {
+                "text": "🚀 Setup My Engineer",
                 "type": "primary",
                 "action": "nextTour",
                 "nextTourId": "autonomous-engineer-setup",
                 "analytics": "welcome_setup_engineer"
+              }
+            ],
+            "duration": null,
+            "autoAdvance": false
+          }
+        ]
+      },
+      {
+        "id": "demo-video",
+        "name": "Demo Video",
+        "description": "Interactive demo video showing handit.ai capabilities",
+        "type": "guided",
+        "icon": "Play",
+        "settings": {
+          "canSkip": true,
+          "showOnlyOnce": false,
+          "canReplay": true,
+          "showProgress": false,
+          "showAssistant": false,
+          "assistantPosition": "bottom-center",
+          "backdrop": true,
+          "escapeToClose": true,
+          "clickOutsideToClose": true
+        },
+        "analytics": {
+          "trackSteps": true,
+          "trackCompletions": true,
+          "trackSkips": true,
+          "trackTimeSpent": true
+        },
+        "steps": [
+          {
+            "stepNumber": 1,
+            "id": "demo-video-banner",
+            "type": "banner",
+            "title": "Demo Video",
+            "target": "body",
+            "placement": "center",
+            "content": {
+              "heading": "See handit.ai in Action! 🎬",
+              "description": "Watch how our autonomous engineer monitors and fixes AI issues automatically.",
+              "variant": "info",
+              "showCloseButton": false,
+              "autoHide": false,
+              "icon": "🎬",
+              "videoUrl": "https://cdn.handit.ai/Autonomous%20AI%20Monitoring%20and%20Fixing%20(1).mp4"
+            },
+            "actions": [
+              {
+                "text": "Setup My Engineer",
+                "type": "primary",
+                "action": "nextTour",
+                "nextTourId": "autonomous-engineer-setup",
+                "analytics": "demo_setup_engineer"
               }
             ],
             "duration": null,
@@ -108,255 +169,46 @@
         "steps": [
           {
             "stepNumber": 1,
-            "id": "setup-choice-banner",
-            "type": "form",
-            "title": "Setup Your Autonomous Engineer",
-            "target": "body",
-            "placement": "center",
-            "content": {
-              "heading": "Setup Your Autonomous Engineer",
-              "description": "Choose how you'd like to setup your autonomous engineer.",
-              "fields": [
-                {
-                  "name": "setupChoice",
-                  "label": "Setup Method",
-                  "type": "radio",
-                  "required": true,
-                  "options": [
-                    {
-                      "value": "automatic",
-                      "label": "GitHub Setup",
-                      "description": "We'll automatically create a PR to configure your agent with your repository and agent details."
-                    },
-                    {
-                      "value": "manual",
-                      "label": "CLI Setup",
-                      "description": "You'll use the CLI to configure your agent in your local environment after GitHub connection."
-                    },
-                    {
-                      "value": "other",
-                      "label": "Other",
-                      "description": "One of our experts will contact you in less than a day to help with your specific needs."
-                    }
-                  ]
-                }
-              ]
-            },
-            "actions": [
-              {
-                "text": "Continue",
-                "type": "primary",
-                "action": "nextStep",
-                "analytics": "setup_choice_submitted"
-              }
-            ],
-            "duration": null,
-            "autoAdvance": false,
-            "conditionalNavigation": {
-              "field": "setupChoice",
-              "branches": {
-                "automatic": "github-connect-step",
-                "manual": "manual-cli-instructions",
-                "other": "expert-contact-step"
-              }
-            }
-          },
-          {
-            "stepNumber": 2,
-            "id": "github-connect-step",
+            "id": "cli-instructions",
             "type": "banner",
-            "title": "Connect to GitHub",
+            "title": "CLI Setup Instructions",
             "target": "body",
             "placement": "center",
-            "content": {
-              "heading": "Connect to GitHub",
-              "description": "handit needs GitHub access to automatically create pull requests when issues are detected.",
-              "variant": "info",
-              "showCloseButton": false,
-              "autoHide": false,
-              "icon": "🔗"
-            },
-            "actions": [
-              {
-                "text": "Connect to GitHub",
-                "type": "primary",
-                "action": "openGitHub",
-                "url": "https://github.com/apps/handit-ai/installations/new?state=${companyId}",
-                "analytics": "github_connect_clicked"
-              }
-            ],
-            "duration": null,
-            "autoAdvance": false
-          },
-          {
-            "stepNumber": 3,
-            "id": "github-continue-step",
-            "type": "banner",
-            "title": "Continue Setup",
-            "target": "body",
-            "placement": "center",
-            "content": {
-              "heading": "GitHub Connected!",
-              "description": "Great! Your GitHub account is now connected. Let's continue with the setup process.",
-              "variant": "success",
-              "showCloseButton": false,
-              "autoHide": false,
-              "icon": "✅"
-            },
-            "actions": [
-              {
-                "text": "Continue Setup",
-                "type": "primary",
-                "action": "nextStep",
-                "analytics": "github_continue_setup"
-              }
-            ],
-            "duration": null,
-            "autoAdvance": false,
-            "conditionalNavigation": {
-              "field": "setupChoice",
-              "branches": {
-                "automatic": "automatic-repository-selector-step",
-                "manual": "manual-cli-instructions",
-                "other": "expert-contact-step"
-              }
-            }
-          },
-          {
-            "stepNumber": 4,
-            "id": "automatic-repository-selector-step",
-            "type": "form",
-            "title": "Select Repository (Automatic Setup)",
-            "target": "body",
-            "placement": "center",
-            "showOnlyIf": {
-              "field": "setupChoice",
-              "value": "automatic"
-            },
-            "content": {
-              "heading": "Setting up your autonomous engineer...",
-              "description": "Choose the repository where your agent is located and provide the necessary details for automatic setup.",
-              "fields": [
-                {
-                  "name": "repository",
-                  "label": "Select the repository of the agent",
-                  "type": "repository-search",
-                  "placeholder": "Search repositories...",
-                  "required": true,
-                  "options": "dynamic:userRepositories"
-                },
-                {
-                  "name": "branch",
-                  "label": "Select the branch where your code is located",
-                  "type": "branch-search",
-                  "placeholder": "Select branch...",
-                  "required": true,
-                  "dependsOn": "repository",
-                  "apiEndpoint": "/git/repository-branches",
-                  "showDefaultIndicator": true
-                },
-                {
-                  "name": "agentFile",
-                  "label": "Select the file where the agent starts execution",
-                  "type": "file-search",
-                  "placeholder": "Search files...",
-                  "required": true,
-                  "dependsOn": "repository",
-                  "apiEndpoint": "/git/repository-files",
-                  "fileTypes": ["source"],
-                  "prioritizeExecutable": true
-                },
-                {
-                  "name": "agentFunction",
-                  "label": "Enter the function or endpoint that starts execution",
-                  "type": "text",
-                  "placeholder": "e.g., main, run, process, etc.",
-                  "required": true
-                }
-              ]
-            },
-            "actions": [
-              {
-                "text": "Setup Agent",
-                "type": "primary",
-                "action": "setupHanditAgent",
-                "endpoint": "/git/assess-and-setup-handit",
-                "analytics": "automatic_agent_setup_submitted"
-              }
-            ],
-            "duration": null,
-            "autoAdvance": false
-          },
-          {
-            "stepNumber": 5,
-            "id": "manual-cli-instructions",
-            "type": "banner",
-            "title": "Manual CLI Setup",
-            "target": "body",
-            "placement": "center",
-            "showOnlyIf": {
-              "field": "setupChoice",
-              "value": "manual"
-            },
             "content": {
               "heading": "CLI Setup Instructions",
-              "description": "Follow these steps to setup your autonomous engineer using the CLI. You'll need to connect to GitHub separately in your local environment:",
+              "description": "Follow these steps to setup your autonomous engineer using the CLI:",
               "variant": "info",
               "showCloseButton": false,
               "autoHide": false,
               "icon": "💻",
-              "codeSnippet": {
-                "language": "bash",
-                "commands": [
-                  "npm install -g @handit.ai/cli",
-                  "handit-cli setup"
-                ]
-              }
+              "codeBlocks": [
+                {
+                  "language": "bash",
+                  "title": "Install CLI",
+                  "code": "npm install -g @handit.ai/cli",
+                  "copyable": true
+                },
+                {
+                  "language": "bash", 
+                  "title": "Setup Agent",
+                  "code": "handit-cli setup",
+                  "copyable": true
+                }
+              ]
             },
             "actions": [
               {
                 "text": "I've Completed Setup",
                 "type": "primary",
                 "action": "nextStep",
-                "analytics": "manual_setup_completed"
+                "analytics": "cli_setup_completed"
               }
             ],
             "duration": null,
             "autoAdvance": false
           },
           {
-            "stepNumber": 6,
-            "id": "expert-contact-step",
-            "type": "banner",
-            "title": "Expert Contact",
-            "target": "body",
-            "placement": "center",
-            "showOnlyIf": {
-              "field": "setupChoice",
-              "value": "other"
-            },
-            "content": {
-              "heading": "Expert Support",
-              "description": "One of our experts will contact you within 24 hours to help with your specific setup needs. In the meantime, you can schedule a call with us.",
-              "variant": "info",
-              "showCloseButton": false,
-              "autoHide": false,
-              "icon": "👨‍💼"
-            },
-            "actions": [
-              {
-                "text": "Schedule Call",
-                "type": "primary",
-                "action": "openCalendlyAndNext",
-                "url": "https://calendly.com/cristhian-handit/30min",
-                "analytics": "expert_contact_scheduled"
-              }
-            ],
-            "duration": null,
-            "autoAdvance": false
-          },
-          {
-            "stepNumber": 7,
+            "stepNumber": 2,
             "id": "ai-model-setup-explanation",
             "type": "banner",
             "title": "AI Model Setup",
@@ -382,7 +234,7 @@
             "autoAdvance": false
           },
           {
-            "stepNumber": 8,
+            "stepNumber": 3,
             "id": "ai-model-setup-form",
             "type": "form",
             "title": "Connect AI Model",
@@ -421,7 +273,7 @@
             "autoAdvance": false
           },
           {
-            "stepNumber": 9,
+            "stepNumber": 4,
             "id": "setup-complete",
             "type": "banner",
             "title": "Setup Complete",

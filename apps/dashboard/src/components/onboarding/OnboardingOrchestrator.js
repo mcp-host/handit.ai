@@ -1349,6 +1349,22 @@ const OnboardingOrchestrator = ({
               setTimeout(() => {
                 handleNext();
               }, 100); // Small delay to ensure Calendly opens first
+            } else if (action.action === 'openDemo') {
+              // Open demo page in new window
+              window.open(action.url, '_blank', 'noopener,noreferrer');
+              
+              // Track analytics
+              if (action.analytics) {
+                onboardingService.trackEvent(action.analytics, {
+                  action: 'openDemo',
+                  url: action.url
+                });
+              }
+              
+              // Close the current onboarding tour since user is going to demo
+              setTimeout(() => {
+                handleTourComplete();
+              }, 100); // Small delay to ensure demo opens first
             } else if (action.action === 'openPR') {
               // Open the optimization PR in new window
               // Get the PR URL from the tour data or event detail
