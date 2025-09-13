@@ -10,7 +10,7 @@ import {
   Link,
   Breadcrumbs,
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon } from '@phosphor-icons/react';
+import { ArrowLeft as ArrowBackIcon } from '@phosphor-icons/react/dist/ssr/ArrowLeft';
 import { useRouter } from 'next/navigation';
 
 export default function TermsOfUsePage() {
@@ -46,7 +46,7 @@ export default function TermsOfUsePage() {
                   alignItems: 'center',
                   gap: 1,
                   textDecoration: 'none',
-                  color: '#02f7aa',
+                  color: 'black',
                   '&:hover': {
                     textDecoration: 'underline',
                   },

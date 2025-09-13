@@ -87,10 +87,10 @@ export function GitHubOAuthButton({
   return (
     <Stack spacing={2} sx={{ width: fullWidth ? '100%' : 'auto' }}>
       {showDivider && (
-        <Box sx={{ display: 'flex', alignItems: 'center', my: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', my: 0.1 }}>
           <Box sx={{ flex: 1, height: 1, backgroundColor: 'divider' }} />
           <Typography variant="body2" sx={{ px: 2, color: 'text.secondary' }}>
-            or
+            - or sign in with -
           </Typography>
           <Box sx={{ flex: 1, height: 1, backgroundColor: 'divider' }} />
         </Box>
