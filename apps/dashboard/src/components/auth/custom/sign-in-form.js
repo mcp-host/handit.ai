@@ -240,6 +240,33 @@ export function SignInForm() {
           fullWidth 
           showDivider 
         />
+        <Typography variant="caption" sx={{ 
+          color: '#9ca3af', 
+          textAlign: 'center',
+          mt: 2,
+          mr: 6,
+          ml: 6,
+          fontSize: '0.75rem'
+        }}>
+          By signing in, you agree to our{' '}
+          <Link 
+            href="/terms-of-use" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            sx={{ color: 'primary.main', textDecoration: 'none' }}
+          >
+            Terms of Use
+          </Link>
+          {' '}and{' '}
+          <Link 
+            href="/privacy-policy" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            sx={{ color: 'primary.main', textDecoration: 'none' }}
+          >
+            Privacy Policy
+          </Link>
+        </Typography>
       </Stack>
     </Stack>
   );

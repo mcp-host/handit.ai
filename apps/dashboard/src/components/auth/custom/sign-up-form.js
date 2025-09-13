@@ -216,11 +216,7 @@ export function SignUpForm() {
           mt: 2,
           mr: 6,
           ml: 6,
-          fontSize: '0.75rem',
-          bottom: '40px',
-          position: 'absolute',
-          alignSelf: 'center',
-          width: '300px',
+          fontSize: '0.75rem'
         }}>
           By signing up, you agree to our{' '}
           <Link 
