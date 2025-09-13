@@ -48,19 +48,34 @@ import { GitHubOAuthButton } from '@/components/auth/github-oauth-button';
  * - Last name is required
  * - Email is required and valid format
  * - Password is at least 6 characters
+ * - Terms of use acceptance is required
+ * - Privacy policy acceptance is required
  */
 const schema = zod.object({
   firstName: zod.string().min(1, { message: 'First name is required' }),
   lastName: zod.string().min(1, { message: 'Last name is required' }),
   email: zod.string().min(1, { message: 'Email is required' }).email(),
   password: zod.string().min(6, { message: 'Password should be at least 6 characters' }),
+  acceptTerms: zod.boolean().refine(val => val === true, { 
+    message: 'You must accept the Terms of Use to continue' 
+  }),
+  acceptPrivacy: zod.boolean().refine(val => val === true, { 
+    message: 'You must accept the Privacy Policy to continue' 
+  }),
 });
 
 /**
  * Default form values
- * Initializes all form fields as empty strings
+ * Initializes all form fields as empty strings and checkboxes as false
  */
-const defaultValues = { firstName: '', lastName: '', email: '', password: '' };
+const defaultValues = { 
+  firstName: '', 
+  lastName: '', 
+  email: '', 
+  password: '', 
+  acceptTerms: false, 
+  acceptPrivacy: false 
+};
 
 /**
  * Sign Up Form Component
@@ -187,6 +202,90 @@ export function SignUpForm() {
                   <InputLabel>Password</InputLabel>
                   <OutlinedInput {...field} type="password" />
                   {errors.password ? <FormHelperText>{errors.password.message}</FormHelperText> : null}
+                </FormControl>
+              )}
+            />
+
+            {/* Terms of Use Checkbox */}
+            <Controller
+              control={control}
+              name="acceptTerms"
+              render={({ field }) => (
+                <FormControl error={Boolean(errors.acceptTerms)}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        {...field}
+                        checked={field.value}
+                        sx={{
+                          color: errors.acceptTerms ? 'error.main' : 'primary.main',
+                          '&.Mui-checked': {
+                            color: errors.acceptTerms ? 'error.main' : 'primary.main',
+                          },
+                        }}
+                      />
+                    }
+                    label={
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        I agree to the{' '}
+                        <Link 
+                          href="/terms-of-use" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          sx={{ color: 'primary.main', textDecoration: 'none' }}
+                        >
+                          Terms of Use
+                        </Link>
+                      </Typography>
+                    }
+                  />
+                  {errors.acceptTerms ? (
+                    <FormHelperText sx={{ ml: 0 }}>
+                      {errors.acceptTerms.message}
+                    </FormHelperText>
+                  ) : null}
+                </FormControl>
+              )}
+            />
+
+            {/* Privacy Policy Checkbox */}
+            <Controller
+              control={control}
+              name="acceptPrivacy"
+              render={({ field }) => (
+                <FormControl error={Boolean(errors.acceptPrivacy)}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        {...field}
+                        checked={field.value}
+                        sx={{
+                          color: errors.acceptPrivacy ? 'error.main' : 'primary.main',
+                          '&.Mui-checked': {
+                            color: errors.acceptPrivacy ? 'error.main' : 'primary.main',
+                          },
+                        }}
+                      />
+                    }
+                    label={
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        I agree to the{' '}
+                        <Link 
+                          href="/privacy-policy" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          sx={{ color: 'primary.main', textDecoration: 'none' }}
+                        >
+                          Privacy Policy
+                        </Link>
+                      </Typography>
+                    }
+                  />
+                  {errors.acceptPrivacy ? (
+                    <FormHelperText sx={{ ml: 0 }}>
+                      {errors.acceptPrivacy.message}
+                    </FormHelperText>
+                  ) : null}
                 </FormControl>
               )}
             />
