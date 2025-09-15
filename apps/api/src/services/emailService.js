@@ -1098,7 +1098,7 @@ export const sendPromptVersionCreatedEmail = async ({
   if (user) {
     // Check if user's company has GitHub integration
     const githubIntegration = await GitHubIntegration.findOne({
-      where: { companyId: user.companyId, active: true }
+      where: { companyId: user.companyId }
     });
     
     hasGitHubIntegration = !!githubIntegration;
