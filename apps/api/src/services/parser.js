@@ -87,15 +87,16 @@ const extractSystemPromptUsingStructure = (data, structure) => {
         break;
       
       case 'nested':
-        const value = getNestedValue(data, structure.path);
+        const value = getNestedValue(data, structure.path.replace('input.', ''));
         if (value && typeof value === 'string') {
           return value;
         }
         break;
       
       case 'direct':
-        if (data && typeof data === 'object' && data[structure.field]) {
-          return data[structure.field];
+        const field = structure.path.replace('input.', '');
+        if (field && field.length > 0) {
+          return getNestedValue(data, field);
         }
         break;
     }
