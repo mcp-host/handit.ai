@@ -1079,7 +1079,7 @@ export const sendPromptVersionCreatedEmail = async ({
   promptVersion,
   agentId,
   modelId,
-  promptVersionsUrl = 'http://localhost:3000/prompt-versions',
+  promptVersionsUrl = 'http://dashboard.handit.ai/prompt-versions',
   Email,
   User,
   GitHubIntegration,
